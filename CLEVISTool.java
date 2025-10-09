@@ -73,6 +73,7 @@ class CommandParser {
      */
     public void execute(String command) {
         // Implementation here
+        //James: basically here is the commands like, boundingbox, line, square, etc... Like switch -> case, etc...
     }
 
     /**
