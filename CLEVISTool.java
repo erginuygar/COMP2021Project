@@ -1,10 +1,12 @@
 import java.util.*;
+import java.util.logging.*;
 
 class Logger {
     private String htmlLogPath;
     private String txtLogPath;
 
     public Logger(String[] args) {
+
         // Constructor implementation
     }
 
@@ -18,6 +20,9 @@ class Logger {
 }
 
 public class CLEVISTool {
+    private static Logger logger;
+    private static final Logger clevis = logger.getLogger(CLEVISTool.class.getName());
+
     public static void main(String[] args) {
         // Main method to start the Clevis application.
     }
