@@ -79,8 +79,58 @@ class CommandParser {
      * Handles various shape operations based on the command.
      */
     public void execute(String command) {
-        // Implementation here
-        //James: basically here is the commands like, boundingbox, line, square, etc... Like switch -> case, etc...
+        
+        String[] tokens = command.trim().split("\\s+");
+        String operation = tokens[0].toLowerCase();
+
+        switch(operation){
+            case "rectangle":
+                createRectangle(tokens);
+                break;
+            case "line":
+                createLine(tokens);
+                break;
+            case "circle":
+                createCircle(tokens);
+                break;
+            case "square":
+                createSquare(tokens);
+                break;
+            case "group":
+                groupShapes(tokens);
+                break;
+            case "ungroup":
+                ungroupShapes(tokens);
+                break;
+            case "delete":
+                deleteShape(tokens);
+                break;
+            case "boundingbox":
+                calculateBoundingBox(tokens);
+                break;
+            case "move":
+                moveShape(tokens);
+                break;
+            case "shapeat":
+                findTopmostShape(tokens);
+                break;
+            case "intersect":
+                checkIntersection(tokens);
+                break;
+            case "list":
+                listShape(tokens);
+                break;
+            case "listall":
+                listAllShapes(tokens);
+                break;
+            case "quit":
+                quitProgram(tokens);
+                break;
+            default:
+                System.out.println("Unknown command: " + operation); 
+        }
+
+        //TODO: error handling
     }
 
     /**
@@ -90,7 +140,22 @@ class CommandParser {
      * location (x, y), and whose width and height are w and h, respectively.
      */
     private void createRectangle(String[] tokens) {
-        // Implementation here
+        
+        if (tokens.length != 6) {
+            throw new IllegalArgumentException("Rectangle command required 5 parameters: name, x, y, width, height");
+        }
+
+        String name = tokens[1].trim();
+        double x = Double.parseDouble(tokens[2]);
+        double y = Double.parseDouble(tokens[3]);
+        double width = Double.parseDouble(tokens[4]);
+        double height = Double.parseDouble(tokens[5]);
+
+        Rectangle rectangle = new Rectangle(n, x, y, width, height);
+
+        System.out.println("Created a Rectangle named: " + name);
+
+        //TODO: error handling
     }
 
     /**
@@ -100,7 +165,18 @@ class CommandParser {
      * locations (x1, y1) and (x2, y2), respectively.
      */
     private void createLine(String[] tokens) {
-        // Implementation here
+
+        if (tokens.length != 6) {
+            throw new IllegalArgumentException("Line command required 5 parameters: name, x1, y1, x2, y2");
+        }
+
+        String name = tokens[1].trim();
+        double x1 = Double.parseDouble(tokens[2]);
+        double y1 = Double.parseDouble(tokens[3]);
+        double x2 = Double.parseDouble(tokens[4]);
+        double y2 = Double.parseDouble(tokens[5]);
+
+        System.out.println("Created a Line named: " + name);
     }
 
     /**
@@ -110,7 +186,17 @@ class CommandParser {
      * and whose radius is r.
      */
     private void createCircle(String[] tokens) {
-        // Implementation here
+
+        if (tokens.length != 5) {
+            throw new IllegalArgumentException("Circle command required 4 parameters: name, x, y, radius");
+        }
+
+        String name = tokens[1].trim();
+        double x = Double.parseDouble(tokens[2]);
+        double y = Double.parseDouble(tokens[3]);
+        double radius = Double.parseDouble(tokens[4]);
+
+        System.out.println("Created a Circle named: " + name);
     }
 
     /**
@@ -120,7 +206,17 @@ class CommandParser {
      * location (x, y), and whose side length is l.
      */
     private void createSquare(String[] tokens) {
-        // Implementation here
+
+        if (tokens.length != 5) {
+            throw new IllegalArgumentException("Square command required 4 parameters: name, x, y, length");
+        }
+
+        String name = tokens[1].trim();
+        double x = Double.parseDouble(tokens[2]);
+        double y = Double.parseDouble(tokens[3]);
+        double length = Double.parseDouble(tokens[4]);
+
+        System.out.println("Created a Square named: " + name);
     }
 
     /**
@@ -129,7 +225,14 @@ class CommandParser {
      * Effect: Creates a new shape named n by grouping existing shapes named n1, n2, ...
      */
     private void groupShapes(String[] tokens) {
-        // Implementation here
+
+        if (tokens.length < 3) {
+            throw new IllegalArgumentException("Group command required at least 3 parameters: group name, name1, name2, nameN...");
+        }
+
+        String name = tokens[1].trim();
+
+        System.out.println("Grouped Shapes named: " + name);
     }
 
     /**
@@ -138,16 +241,28 @@ class CommandParser {
      * Effect: Ungroups shape n into its component shapes.
      */
     private void ungroupShapes(String[] tokens) {
-        // Implementation here
-    }
 
+         if (tokens.length != 2) {
+            throw new IllegalArgumentException("Ungroup command required 1 parameters: name");
+        }
+
+        String name = tokens[1].trim();
+
+        System.out.println("Ungrouped a Shape named: " + name);
+    }
     /**
      * [REQ9] The tool should support calculating the minimum bounding box of a shape.
      * Command: boundingbox n
      * Effect: Calculates and outputs the minimum bounding box of the shape name n.
      */
     private void calculateBoundingBox(String[] tokens) {
-        // Implementation here
+
+        if (tokens.length != 2) {
+            throw new IllegalArgumentException("Boundingbox command required 1 parameters: name");
+        }
+
+        String name = tokens[1].trim();
+
     }
 
     /**
@@ -156,7 +271,16 @@ class CommandParser {
      * Effect: Moves the shape named n, horizontally by dx and vertically by dy.
      */
     private void moveShape(String[] tokens) {
-        // Implementation here
+
+        if (tokens.length != 4) {
+            throw new IllegalArgumentException("Boundingbox command required 3 parameters: name, dx, dy");
+        }
+
+        String name = tokens[1].trim();
+        double dx = Double.parseDouble(tokens[2]);
+        double dy = Double.parseDouble(tokens[3]);
+
+        System.out.println("Moved Shape " + name + " with (x) " + dx + " and (y) " + dy);
     }
 
     /**
@@ -201,39 +325,72 @@ class Rectangle {
     private String name;
     private double x, y, width, height;
 
-    public Rectangle(String name, double x, double y, double width, double height) {
-        // Constructor implementation
+    public Rectangle(String name, double x, double y, double w, double h) {
+
+        if (name == null){
+            throw new IllegalArgumentException("Name can not be null or empty.");
+        }
+        if (w <= 0){
+            throw new IllegalArgumentException("Weight must be positive.");
+        }
+        if (h <= 0){
+            throw new IllegalArgumentException("Height must be positive.");
+        }
+        
+        this.name = name;
+        this.x = x;
+        this.y = y;
+        this.w = width;
+        this.h = height;
     }
 
     /**
-     * Returns the name of the rectangle.
+     * Returns the values of the rectangle.
      */
     public String getName() {
-        // Implementation here
-        return null;
+        return name;
+    }
+    
+    public double getX() {
+        return x;
+    }
+    
+    public double getY() {
+        return y;
+    }
+    
+    public double getWidth() {
+        return width;
+    }
+    
+    public double getHeight() {
+        return height;
     }
 
     /**
      * Returns information about the rectangle.
      */
     public String getInfo() {
-        // Implementation here
-        return null;
+        String rectangleInfo = "Rectangle[name: %s, x: %.2f, y: %.2f, width: %.2f, height: %.2f]";
+        rectangleInfo = String.format(rectangleInfo, name, x, y, width, height);
+        return rectangleInfo;
     }
 
     /**
      * Moves the rectangle by specified deltas.
      */
     public void move(double dx, double dy) {
-        // Implementation here
+        this.x += dx;
+        this.y += dy;
     }
 
     /**
      * Returns the bounding box of the rectangle.
      */
     public String getBoundingBox() {
-        // Implementation here
-        return null;
+        String boudingBox = "%.2f %.2f %.2f %.2f";
+        boundingBox = String.format(boundingBox, x ,y, width, height);
+        return boundingBox;
     }
 }
 
@@ -381,3 +538,4 @@ class GroupingException extends ClevisException {
         // Constructor implementation
     }
 }
+
