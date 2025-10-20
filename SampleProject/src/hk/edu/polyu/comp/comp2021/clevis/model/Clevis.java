@@ -21,7 +21,7 @@ class Logger {
     }
 }
 
-public class CLEVISTool {
+public class Clevis {
     private static Logger logger;
     private static final Logger clevis = logger.getLogger(CLEVISTool.class.getName());
 
