@@ -2,9 +2,6 @@ package hk.edu.polyu.comp.comp2021.clevis.model;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
 public class Logger {
     private final static String file_name = "log.txt";
     private static PrintWriter writer;
