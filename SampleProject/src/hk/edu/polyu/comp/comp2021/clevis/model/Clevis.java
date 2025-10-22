@@ -3,23 +3,6 @@ package hk.edu.polyu.comp.comp2021.clevis.model;
 import java.util.*;
 import java.util.logging.*;
 
-class Logger {
-    private String htmlLogPath;
-    private String txtLogPath;
-
-    public Logger(String[] args) {
-
-        // Constructor implementation
-    }
-
-    /**
-     * Logs all operations executed during a Clevis session into two files.
-     * The first file is in HTML format, and the second is in plain TXT format.
-     */
-    public void log(String command) {
-        // Implementation here
-    }
-}
 
 public class Clevis {
     private static Logger logger;
@@ -28,6 +11,11 @@ public class Clevis {
     public static void main(String[] args) {
         // Main method to start the Clevis application.
     }
+}
+
+abstract class Shape{
+    public abstract double getArea();
+    public abstract String getName();
 }
 
 class ShapeManager {
@@ -646,5 +634,4 @@ class GroupingException extends ClevisException {
         super(message);
     }
 }
-
 
