@@ -14,6 +14,7 @@ public class Clevis {
 }
 
 abstract class Shape{
+    public Shape(){}
     public abstract double getArea();
     public abstract String getName();
 }
@@ -363,7 +364,7 @@ class CommandParser {
 }
 
 // Shape classes
-class Rectangle {
+class Rectangle extends Shape{
     private String name;
     private double x, y, width, height;
 
@@ -402,6 +403,9 @@ class Rectangle {
         return rectangleInfo;
     }
 
+    public double getArea(){
+        return this.width*this.height;
+    }
     /**
      * Moves the rectangle by specified deltas.
      */
@@ -500,7 +504,7 @@ class Line {
     }
 } 
 
-class Circle {
+class Circle extends Shape {
     private String name;
     private double x, y, radius;
 
@@ -557,7 +561,7 @@ class Circle {
     }
 }
 
-class Square {
+class Square extends Shape {
     private String name;
     private double x, y, length;
 
