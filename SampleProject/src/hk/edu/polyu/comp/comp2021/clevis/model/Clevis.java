@@ -9,7 +9,31 @@ public class Clevis {
     private static final Logger clevis = logger.getLogger(CLEVISTool.class.getName());
 
     public static void main(String[] args) {
-        // Main method to start the Clevis application.
+        try {
+            String htmlPath = "log.html";
+            String txtPath = "log.txt";
+            for (int i = 0; i < args.length - 1; i++) {
+                if (args[i].equalsIgnoreCase("-html")) htmlPath = args[i + 1];
+                if (args[i].equalsIgnoreCase("-txt")) txtPath = args[i + 1];
+            }
+
+            Logger logger = new Logger(htmlPath, txtPath);
+            ShapeManager manager = new ShapeManager();
+            Scanner input = new Scanner(System.in);
+            CommandParser parser = new CommandParser(manager, logger);
+
+            System.out.println("Welcome to Clevis! Type commands or 'quit' to exit.");
+
+            boolean running = true;
+            while (running) {
+                System.out.print("> ");
+                String line = input.nextLine();
+                parser.execute(line);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Fatal error: " + e.getMessage());
+        }
     }
 }
 
@@ -254,15 +278,30 @@ class CommandParser {
      * Command: group n n1 n2 ...
      * Effect: Creates a new shape named n by grouping existing shapes named n1, n2, ...
      */
-    private void groupShapes(String[] tokens) {
-
+    private void groupShapes(String[] tokens) throws ClevisException {
         if (tokens.length < 3) {
-            throw new IllegalArgumentException("Group command required at least 3 parameters: group name, name1, name2, nameN...");
+            throw new ClevisException("Usage: group n n1 n2 ...");
         }
 
-        String name = tokens[1].trim();
+        String groupName = tokens[1];
+        List<Shape> memberShapes = new ArrayList<>();
 
-        System.out.println("Grouped Shapes named: " + name);
+        for (int i = 2; i < tokens.length; i++) {
+            Shape foundShape = shapeManager.getShape(tokens[i]);
+            if (foundShape == null) throw new ShapeNotFoundException("Shape not found: " + tokens[i]);
+            memberShapes.add(foundShape);
+        }
+
+        if (memberShapes.isEmpty()) throw new ClevisException("You must provide at least one shape to group.");
+
+        Group newGroup = new Group(groupName, memberShapes);
+
+        for (Shape s : memberShapes) {
+            shapeManager.deleteShape(s.getName());
+        }
+
+        shapeManager.addShape(newGroup);
+        System.out.println("Group '" + groupName + "' created with " + memberShapes.size() + " shapes.");
     }
 
     /**
@@ -270,15 +309,29 @@ class CommandParser {
      * Command: ungroup n
      * Effect: Ungroups shape n into its component shapes.
      */
-    private void ungroupShapes(String[] tokens) {
-
-         if (tokens.length != 2) {
-            throw new IllegalArgumentException("Ungroup command required 1 parameters: name");
+    private void ungroupShapes(String[] tokens) throws ClevisException {
+        if (tokens.length != 2) {
+            throw new ClevisException("Usage: ungroup n");
         }
 
-        String name = tokens[1].trim();
+        String groupName = tokens[1];
+        Shape foundShape = shapeManager.getShape(groupName);
+        if (foundShape == null) throw new ShapeNotFoundException("Shape not found: " + groupName);
+        if (!(foundShape instanceof Group)) throw new ClevisException("Shape '" + groupName + "' is not a group.");
 
-        System.out.println("Ungrouped a Shape named: " + name);
+        Group group = (Group) foundShape;
+
+        shapeManager.deleteShape(groupName);
+        for (Shape member : group.getMembers()) {
+            shapeManager.addShape(member);
+        }
+
+        System.out.println("Group '" + groupName + "' has been ungrouped.");
+    }
+
+    private void quitProgram(String[] tokens) {
+        System.out.println("Exiting Clevis...");
+        System.exit(0);
     }
     /**
      * [REQ9] The tool should support calculating the minimum bounding box of a shape.
@@ -331,8 +384,25 @@ class CommandParser {
      * Command: shapeAt x y
      * Effect: Returns the name of the shape with the highest Z-index that covers point (x, y).
      */
-    private void findTopmostShape(String[] tokens) {
-        // Implementation here
+    private void findTopmostShape(String[] tokens) throws ClevisException {
+        if (tokens.length != 3) {
+            throw new ClevisException("Usage: shapeAt x y");
+        }
+
+        double x = Double.parseDouble(tokens[1]);
+        double y = Double.parseDouble(tokens[2]);
+
+        List<Shape> allShapes = shapeManager.getAllShapes();
+
+        for (int i = allShapes.size() - 1; i >= 0; i--) {
+            Shape s = allShapes.get(i);
+            if (s.coversPoint(x, y)) {
+                System.out.println("Topmost shape: " + s.getName());
+                return;
+            }
+        }
+
+        System.out.println("No shape covers that point.");
     }
 
     /**
@@ -340,8 +410,27 @@ class CommandParser {
      * Command: intersect n1 n2
      * Effect: Reports whether two shapes n1 and n2 intersect with each other.
      */
-    private void checkIntersection(String[] tokens) {
-        // Implementation here
+    private void checkIntersection(String[] tokens) throws ClevisException {
+        if (tokens.length != 3) {
+            throw new ClevisException("Usage: intersect n1 n2");
+        }
+
+        Shape s1 = shapeManager.getShape(tokens[1]);
+        Shape s2 = shapeManager.getShape(tokens[2]);
+
+        double[] b1 = s1.getBoundingBox();
+        double[] b2 = s2.getBoundingBox();
+
+        double x1 = b1[0], y1 = b1[1], w1 = b1[2], h1 = b1[3];
+        double x2 = b2[0], y2 = b2[1], w2 = b2[2], h2 = b2[3];
+
+        double left1 = x1, right1 = x1 + w1, top1 = y1, bottom1 = y1 + h1;
+        double left2 = x2, right2 = x2 + w2, top2 = y2, bottom2 = y2 + h2;
+
+        boolean separated = right1 < left2 || right2 < left1 || bottom1 < top2 || bottom2 < top1;
+        boolean overlap = !separated;
+
+        System.out.println("Do they intersect? " + (overlap ? "Yes" : "No"));
     }
 
     /**
@@ -349,19 +438,31 @@ class CommandParser {
      * Command: list n
      * Effect: Lists the basic information about the shape named n.
      */
-    private void listShape(String[] tokens) {
-        // Implementation here
-    }
+    private void listShape(String[] tokens) throws ClevisException {
+        if (tokens.length != 2) {
+            throw new ClevisException("Usage: list n");
+        }
 
+        Shape s = shapeManager.getShape(tokens[1]);
+        if (s == null) {
+            throw new ShapeNotFoundException("Shape not found: " + tokens[1]);
+        }
+
+        System.out.println(s.getInfo());
+    }
     /**
      * [REQ14] The tool should support listing all shapes that have been drawn.
      * Command: listAll
      * Effect: Lists the basic information about all of the shapes that have been drawn in decreasing Z-order.
      */
     private void listAllShapes() {
-        // Implementation here
+        List<Shape> allShapes = shapeManager.getAllShapes();
+
+        System.out.println("All shapes (bottom to top):");
+        for (Shape s : allShapes) {
+            System.out.println(" - " + s.getInfo());
+        }
     }
-}
 
 // Shape classes
 class Rectangle extends Shape{
@@ -638,4 +739,5 @@ class GroupingException extends ClevisException {
         super(message);
     }
 }
+
 
