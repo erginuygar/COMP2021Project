@@ -1,43 +1,54 @@
 package hk.edu.polyu.comp.comp2021.clevis.model;
-import java.io.FileWriter;
-import java.io.PrintWriter;
+
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-public class Logger{
-    private final static String file_name = "log.txt";
-    private static PrintWriter writer;
+import java.io.PrintWriter;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Logger {
+    private final static Path LOG_PATH = Paths.get("VectorLineApp/src/hk/edu/polyu/comp/comp2021/clevis/model/logs/log.txt");
     private static int index = 0;
-    private static Map<Integer, String> classes;
-    private static Map<Integer, String> methods; 
+    private static List<String> executionHistory = new ArrayList<>();
 
-    static{
+    static {
+        initializeLogger();
+    }
 
-        try{
-            writer = new PrintWriter(new FileWriter(file_name, true));
-            classes = new HashMap<>();
-            methods = new HashMap<>();
-
-        }
-        catch (IOException e){
+    private static void initializeLogger() {
+        try {
+            Files.createDirectories(LOG_PATH.getParent());
+            System.out.println("Log file: " + LOG_PATH.toAbsolutePath());
+            
+            // Load existing index if log file exists
+            if (Files.exists(LOG_PATH)) {
+            }
+        } catch (IOException e) {
             System.err.println("Failed to initialize logger: " + e.getMessage());
         }
     }
-    public Logger(){}
 
-    private static void Log(String class_name, String method_name) {
-        if(writer != null){
-            StringBuilder log_message = new StringBuilder();
-            log_message.append(index+". "+method_name);
-            classes.put(index,class_name);
-            methods.put(index++,method_name);
-            writer.println(log_message);
- 
-        }
+    public static void log(String message){
+        try (PrintWriter writer = new PrintWriter(
+                // Step 2: Create a buffered writer with specific options
+                Files.newBufferedWriter(LOG_PATH, 
+                    StandardOpenOption.CREATE,     // Create file if it doesn't exist
+                    StandardOpenOption.APPEND))){ // Append to existing file
+            
+                        writer.println(message);
+                    
     }
+    catch (IOException e){
+        System.err.println(e.getMessage());
+
+    }
+}
 
     public static void main(String[] args) {
-        Logger.Log("am","amcik");
-        
+        Logger.log("nigga");
     }
 }
