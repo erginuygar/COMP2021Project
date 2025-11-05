@@ -7,9 +7,33 @@ import java.util.logging.*;
 public class Clevis {
     private static Logger logger;
     private static final Logger clevis = logger.getLogger(CLEVISTool.class.getName());
-
+    //Main #15
     public static void main(String[] args) {
-        // Main method to start the Clevis application.
+        try {
+            String htmlPath = "log.html";
+            String txtPath = "log.txt";
+            for (int i = 0; i < args.length - 1; i++) {
+                if (args[i].equalsIgnoreCase("-html")) htmlPath = args[i + 1];
+                if (args[i].equalsIgnoreCase("-txt")) txtPath = args[i + 1];
+            }
+
+            Logger logger = new Logger(htmlPath, txtPath);
+            ShapeManager manager = new ShapeManager();
+            Scanner input = new Scanner(System.in);
+            CommandParser parser = new CommandParser(manager, logger);
+
+            System.out.println("Welcome to Clevis! Type commands or 'quit' to exit.");
+
+            boolean running = true;
+            while (running) {
+                System.out.print("> ");
+                String line = input.nextLine();
+                parser.execute(line);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Fatal error: " + e.getMessage());
+        }
     }
 }
 
@@ -17,6 +41,10 @@ abstract class Shape{
     public Shape(){}
     public abstract double getArea();
     public abstract String getName();
+    public abstract String getInfo();
+    public abstract void move(double dx, double dy);
+    public abstract String getBoundingBox();
+    public abstract boolean coversPoint(double x, double y);
 }
 
 class ShapeManager {
@@ -34,8 +62,8 @@ class ShapeManager {
      * in a table, and the second file is in plain TXT format.
      */
     public void addShape(Shape shape) throws DuplicateShapeException {
-        if (shapes.containskey(shapes.getName()) {
-            throw DuplicateShapeException("The Shape " + name + " is already in the list");
+        if (shapes.containsKey(shape.getName())) {
+            throw new DuplicateShapeException("The Shape " + shape.getName() + " is already in the list");
         }
         shapes.put(shape.getName(),shape);
         shapeList.add(shape);
@@ -51,8 +79,9 @@ class ShapeManager {
         if (shape == null) {
             throw ShapeNotFoundException("The Shape " + name + " is not in the list");
         }
-        
-        // not yet done
+        shapes.remove(name);
+        shapeList.remove(shape);
+        // not yet done james: i help you
     }
 
     /**
@@ -66,8 +95,10 @@ class ShapeManager {
      * Returns a list of all shapes.
      */
     public List<Shape> getAllShapes() {
-        // Implementation here
-        return null;
+        // // Implementation here
+        // return null
+        //James:
+        return new ArrayList<>(shapeList);
     }
 }
 
@@ -254,15 +285,30 @@ class CommandParser {
      * Command: group n n1 n2 ...
      * Effect: Creates a new shape named n by grouping existing shapes named n1, n2, ...
      */
-    private void groupShapes(String[] tokens) {
-
+    private void groupShapes(String[] tokens) throws Exception {
         if (tokens.length < 3) {
-            throw new IllegalArgumentException("Group command required at least 3 parameters: group name, name1, name2, nameN...");
+            throw new ClevisException("Usage: group n n1 n2 ...");
         }
 
-        String name = tokens[1].trim();
+        String groupName = tokens[1];
+        List<Shape> memberShapes = new ArrayList<>();
 
-        System.out.println("Grouped Shapes named: " + name);
+        for (int i = 2; i < tokens.length; i++) {
+            Shape foundShape = shapeManager.getShape(tokens[i]);
+            if (foundShape == null) throw new ShapeNotFoundException("Shape not found: " + tokens[i]);
+            memberShapes.add(foundShape);
+        }
+
+        if (memberShapes.isEmpty()) throw new ClevisException("You must provide at least one shape to group.");
+
+        Group newGroup = new Group(groupName, memberShapes);
+
+        for (Shape s : memberShapes) {
+            shapeManager.deleteShape(s.getName());
+        }
+
+        shapeManager.addShape(newGroup);
+        System.out.println("Group '" + groupName + "' created with " + memberShapes.size() + " shapes.");
     }
 
     /**
@@ -270,16 +316,33 @@ class CommandParser {
      * Command: ungroup n
      * Effect: Ungroups shape n into its component shapes.
      */
-    private void ungroupShapes(String[] tokens) {
-
-         if (tokens.length != 2) {
-            throw new IllegalArgumentException("Ungroup command required 1 parameters: name");
+    private void ungroupShapes(String[] tokens) throws Exception {
+        if (tokens.length != 2) {
+            throw new ClevisException("Usage: ungroup n");
         }
 
-        String name = tokens[1].trim();
+        String groupName = tokens[1];
+        Shape foundShape = shapeManager.getShape(groupName);
+        if (foundShape == null) throw new ShapeNotFoundException("Shape not found: " + groupName);
+        if (!(foundShape instanceof Group)) throw new ClevisException("Shape '" + groupName + "' is not a group.");
 
-        System.out.println("Ungrouped a Shape named: " + name);
+        Group group = (Group) foundShape;
+
+        shapeManager.deleteShape(groupName);
+        for (Shape member : group.getMembers()) {
+            shapeManager.addShape(member);
+        }
+
+        System.out.println("Group '" + groupName + "' has been ungrouped.");
     }
+    
+    private void deleteShape(String[] tokens) throws Exception {
+        if (tokens.length != 2) throw new ClevisException("Usage: delete n");
+        shapeManager.deleteShape(tokens[1]);
+        System.out.println("Deleted shape: " + tokens[1]);
+    }
+
+
     /**
      * [REQ9] The tool should support calculating the minimum bounding box of a shape.
      * Command: boundingbox n
@@ -293,7 +356,7 @@ class CommandParser {
             }
 
             String name = tokens[1].trim();
-            String boundingBox = shapeManager.getBoundingBox(shapeName);
+            String boundingBox = shapeManager.getBoundingBox(name);
             System.out.println("The bounding box for " + name + ": " + boundingBox);
             
         } catch (IllegalArgumentException e) {
@@ -319,7 +382,10 @@ class CommandParser {
             String name = tokens[1].trim();
             double dx = Double.parseDouble(tokens[2]);
             double dy = Double.parseDouble(tokens[3]);
-    
+            Shape s = shapeManager.getShape(name);
+            if (s == null) 
+                throw new RuntimeException("Shape not found: " + name);
+            s.move(dx, dy);
             System.out.println("Moved Shape " + name + " with (x) " + dx + " and (y) " + dy);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("The parameters except for name must be a valid number.", e);
@@ -331,8 +397,25 @@ class CommandParser {
      * Command: shapeAt x y
      * Effect: Returns the name of the shape with the highest Z-index that covers point (x, y).
      */
-    private void findTopmostShape(String[] tokens) {
-        // Implementation here
+    private void findTopmostShape(String[] tokens) throws ClevisException {
+        if (tokens.length != 3) {
+            throw new ClevisException("Usage: shapeAt x y");
+        }
+
+        double x = Double.parseDouble(tokens[1]);
+        double y = Double.parseDouble(tokens[2]);
+
+        List<Shape> allShapes = shapeManager.getAllShapes();
+
+        for (int i = allShapes.size() - 1; i >= 0; i--) {
+            Shape s = allShapes.get(i);
+            if (s.coversPoint(x, y)) {
+                System.out.println("Topmost shape: " + s.getName());
+                return;
+            }
+        }
+
+        System.out.println("No shape covers that point.");
     }
 
     /**
@@ -341,7 +424,17 @@ class CommandParser {
      * Effect: Reports whether two shapes n1 and n2 intersect with each other.
      */
     private void checkIntersection(String[] tokens) {
-        // Implementation here
+        if (tokens.length != 3) throw new IllegalArgumentException("Usage: intersect n1 n2");
+        Shape s1 = shapeManager.getShape(tokens[1]);
+        Shape s2 = shapeManager.getShape(tokens[2]);
+        if (s1 == null || s2 == null) throw new RuntimeException("Shape not found.");
+
+        String[] b1 = s1.getBoundingBox().split(" ");
+        String[] b2 = s2.getBoundingBox().split(" ");
+        double x1 = Double.parseDouble(b1[0]), y1 = Double.parseDouble(b1[1]), w1 = Double.parseDouble(b1[2]), h1 = Double.parseDouble(b1[3]);
+        double x2 = Double.parseDouble(b2[0]), y2 = Double.parseDouble(b2[1]), w2 = Double.parseDouble(b2[2]), h2 = Double.parseDouble(b2[3]);
+        boolean separated = x1+w1 < x2 || x2+w2 < x1 || y1+h1 < y2 || y2+h2 < y1;
+        System.out.println("Do they intersect? " + (!separated ? "Yes" : "No"));
     }
 
     /**
@@ -350,16 +443,31 @@ class CommandParser {
      * Effect: Lists the basic information about the shape named n.
      */
     private void listShape(String[] tokens) {
-        // Implementation here
+        if (tokens.length != 2) 
+            throw new IllegalArgumentException("Usage: list n");
+        Shape s = shapeManager.getShape(tokens[1]);
+        if (s == null) 
+            throw new RuntimeException("Shape not found: " + tokens[1]);
+        System.out.println(s.getInfo());
     }
-
+    
     /**
      * [REQ14] The tool should support listing all shapes that have been drawn.
      * Command: listAll
      * Effect: Lists the basic information about all of the shapes that have been drawn in decreasing Z-order.
      */
-    private void listAllShapes() {
-        // Implementation here
+    private void listAllShapes(String[] tokens) {
+        List<Shape> allShapes = shapeManager.getAllShapes();
+
+        System.out.println("All shapes (bottom to top):");
+        for (Shape s : allShapes) {
+            System.out.println(" - " + s.getInfo());
+        }
+    }
+        
+    private void quitProgram(String[] tokens) {
+        System.out.println("Exiting Clevis...");
+        System.exit(0);
     }
 }
 
@@ -422,6 +530,11 @@ class Rectangle extends Shape{
         boundingBox = String.format(boundingBox, x ,y, width, height);
         return boundingBox;
     }
+    //James: for intersection
+    public boolean coversPoint(double px, double py) { 
+        return px>=x && px<=x+width && py>=y && py<=y+height; 
+    }
+
 }
 
 class Line {
@@ -502,6 +615,13 @@ class Line {
         boundingBox = String.format(boundingBox, topLeftX , topLeftY, width, height);
         return boundingBox;
     }
+    @Override public boolean coversPoint(double px, double py){
+        double minX=Math.min(x1,x2), 
+            maxX=Math.max(x1,x2), 
+            minY=Math.min(y1,y2), 
+            maxY=Math.max(y1,y2);
+        return px>=minX && px<=maxX && py>=minY && py<=maxY;
+    }
 } 
 
 class Circle extends Shape {
@@ -559,6 +679,9 @@ class Circle extends Shape {
         boundingBox = String.format(boundingBox, topLeftX , topLeftY, widthANDheight, widthANDheight);
         return boundingBox;
     }
+    @Override public boolean coversPoint(double px, double py) { 
+        return Math.pow(px-x,2) + Math.pow(py-y,2) <= radius*radius; }
+
 }
 
 class Square extends Shape {
@@ -612,8 +735,64 @@ class Square extends Shape {
         boundingBox = String.format(boundingBox, x , y, length, length);
         return boundingBox;
     }
+    @Override public boolean coversPoint(double px,double py){ 
+        return px>=x && px<=x+length && py>=y && py<=y+length; 
+    }
+
 }
 
+    
+class Group extends Shape {
+    private String name; private List<Shape> members;
+    public Group(String name, List<Shape> members){
+        if (name==null||name.isEmpty()) throw new IllegalArgumentException("Name cannot be null");
+        if (members==null||members.isEmpty()) throw new IllegalArgumentException("Group must have members");
+        this.name=name; this.members=members;
+    }
+    public List<Shape> getMembers(){
+        return members;
+    }
+    @Override public String getName(){
+        return name;
+    }
+    @Override public String getInfo(){
+        return "Group[name:"+name+", members:"+members.size()+"]";
+    }
+    @Override public double getArea(){
+        double area=0;
+        for(Shape s:members)
+            area+=s.getArea();
+        return area;
+    }
+    @Override public void move(double dx,double dy){
+        for(Shape s:members)
+            s.move(dx,dy);
+    }
+    @Override public String getBoundingBox(){
+        double minX=Double.MAX_VALUE,
+                minY=Double.MAX_VALUE,
+                maxX=-Double.MAX_VALUE,
+                maxY=-Double.MAX_VALUE;
+        for(Shape s:members){
+            String[] bb=s.getBoundingBox().split(" ");
+            double x=Double.parseDouble(bb[0]),
+                    y=Double.parseDouble(bb[1]),
+                    w=Double.parseDouble(bb[2]),
+                    h=Double.parseDouble(bb[3]);
+            minX=Math.min(minX,x);
+            minY=Math.min(minY,y);
+            maxX=Math.max(maxX,x+w);
+            maxY=Math.max(maxY,y+h);
+        }
+        return String.format("%.2f %.2f %.2f %.2f", minX,minY,maxX-minX,maxY-minY);
+    }
+    @Override public boolean coversPoint(double px,double py){
+        for(Shape s:members)
+            if(s.coversPoint(px,py))
+                return true; return false;
+    }
+}
+    
 // Implement custom exceptions
 class ClevisException extends Exception {
     public ClevisException(String message) {
@@ -638,4 +817,3 @@ class GroupingException extends ClevisException {
         super(message);
     }
 }
-
