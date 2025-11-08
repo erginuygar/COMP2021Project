@@ -1,4 +1,4 @@
-package hk.edu.polyu.comp.comp2021.clevis.model;
+    package hk.edu.polyu.comp.comp2021.clevis.model;
 
 import java.util.*;
 import java.util.logging.*;
@@ -62,8 +62,8 @@ class ShapeManager {
      * in a table, and the second file is in plain TXT format.
      */
     public void addShape(Shape shape) throws DuplicateShapeException {
-        if (shapes.containsKey(shape.getName())) {
-            throw new DuplicateShapeException("The Shape " + shape.getName() + " is already in the list");
+        if (shapes.containsKey(shapes.getName()) { //There's an error here
+            throw DuplicateShapeException("The Shape " + shape.getName + " is already in the list"); //Error here
         }
         shapes.put(shape.getName(),shape);
         shapeList.add(shape);
@@ -356,7 +356,7 @@ class CommandParser {
             }
 
             String name = tokens[1].trim();
-            String boundingBox = shapeManager.getBoundingBox(name);
+            String boundingBox = shapeManager.getBoundingBox(shapeName);
             System.out.println("The bounding box for " + name + ": " + boundingBox);
             
         } catch (IllegalArgumentException e) {
@@ -817,3 +817,5 @@ class GroupingException extends ClevisException {
         super(message);
     }
 }
+
+
