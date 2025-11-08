@@ -32,23 +32,44 @@ public class Logger {
         }
     }
 
-    public static void log(String message){
+    public static void log(String class_name, String method_name, Object[] arguments){
         try (PrintWriter writer = new PrintWriter(
                 // Step 2: Create a buffered writer with specific options
                 Files.newBufferedWriter(LOG_PATH, 
                     StandardOpenOption.CREATE,     // Create file if it doesn't exist
-                    StandardOpenOption.APPEND))){ // Append to existing file
+                    StandardOpenOption.APPEND))){ // Append to existing fil
             
                         writer.println(message);
                     
     }
+
     catch (IOException e){
         System.err.println(e.getMessage());
 
     }
 }
 
+    public static String message_parser(Object... arguments) {
+        if (arguments == null || arguments.length == 0) {
+            return "no_args";
+        }
+        
+        StringBuilder parsed = new StringBuilder();
+        for (Object arg : arguments) {
+            if (parsed.length() > 0) {
+                parsed.append("/");
+            }
+            
+            if (arg == null) {
+                parsed.append("null");
+            } else {
+                parsed.append(arg.getClass().getSimpleName()).append(":").append(arg);
+            }
+        }
+        return parsed.toString();
+    }
+
     public static void main(String[] args) {
-        Logger.log("nigga");
+        System.out.println(Logger.message_parser(1,1.0f,"nigga"));
     }
 }
