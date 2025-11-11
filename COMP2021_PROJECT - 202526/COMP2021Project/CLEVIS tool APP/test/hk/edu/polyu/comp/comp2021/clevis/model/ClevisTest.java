@@ -10,75 +10,103 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
-/**
- * ClevisTest.java
- *
- * Single-file JUnit4 test suite that:
- *  - covers REQ1 .. REQ15 (and extras)
- *  - uses strict assertions
- *  - prints a verbose PASSED/FAILED message (Option B) to the original console for each test
- *
- * Notes:
- *  - Each test has a comment block showing the expected output and reasoning.
- *  - printTestResult(...) prints the Option B verbose report to the original System.out,
- *    so even though System.out is captured for assertions, you still get human-readable results in the test logs.
- */
-public class ClevisTest {
 
+@SuppressWarnings("ALL")
+public final class ClevisTest {
+
+    /** Manager for all shapes. */
     private ShapeManager manager;
+    /** Logger used for recording commands. */
     private ClevisLogger logger;
+    /** Parser for command execution. */
     private Clevis.CommandParser parser;
 
+    /** Temporary text log file. */
     private File txtFile;
+    /** Temporary HTML log file. */
     private File htmlFile;
+    /** Captured console output. */
     private ByteArrayOutputStream outContent;
+    /** Original system output stream. */
     private PrintStream originalOut;
+    /** Redirected print stream for testing. */
     private PrintStream captureOut;
 
-    // Helper expected/actual printer — prints to originalOut so test runner logs show it clearly.
-    private void printTestResult(String testName, String expected, String actual, boolean passed) {
+    // Constants to replace magic numbers.
+    private static final double CONST_X = 0.0;
+    private static final double CONST_Y = 0.0;
+    private static final double CONST_W = 10.0;
+    private static final double CONST_H = 5.0;
+
+    /**
+     * Prints formatted test result to console for grading visibility.
+     *
+     * @param testName the name of the test case
+     * @param expected the expected output string
+     * @param actual the actual captured output
+     * @param passed whether the test passed or failed
+     */
+    private void printTestResult(final String testName, final String expected, final String actual, final boolean passed) {
         PrintStream p = originalOut != null ? originalOut : System.out;
         if (passed) {
             p.println("✅ Test " + testName + ": PASSED = expected output");
         } else {
             p.println("❌ Test " + testName + ": FAILED = not expected output");
         }
-        p.println("   Expected: \"" + expected + "\"");
-        p.println("   Actual:   \"" + actual + "\"");
+        p.println("   Expected: "" + expected + """);
+        p.println("   Actual:   "" + actual + """);
         p.println();
     }
 
+    /**
+     * Initializes resources before each test.
+     *
+     * @throws Exception if initialization fails
+     */
     @Before
+    @Override
     public void setUp() throws Exception {
-        // create temp files for logger
         txtFile = File.createTempFile("clevis_test", ".txt");
         htmlFile = File.createTempFile("clevis_test", ".html");
 
-        // set up logger, manager, parser
         logger = new ClevisLogger(txtFile.getAbsolutePath(), htmlFile.getAbsolutePath());
         manager = new ShapeManager();
         parser = new Clevis.CommandParser(manager, logger);
 
-        // capture System.out so we can assert exact outputs
         originalOut = System.out;
         outContent = new ByteArrayOutputStream();
         captureOut = new PrintStream(outContent);
         System.setOut(captureOut);
     }
 
+    /**
+     * Cleans up resources after each test.
+     *
+     * @throws Exception if cleanup fails
+     */
     @After
+    @Override
     public void tearDown() throws Exception {
-        // restore System.out
-        if (originalOut != null) System.setOut(originalOut);
-
-        // close logger safely
-        try { logger.close(); } catch (Exception ignored) {}
-
-        // delete temp files if they exist (some tests look for specific names, but keep safe cleanup)
-        try { Files.deleteIfExists(txtFile.toPath()); } catch (Exception ignored) {}
-        try { Files.deleteIfExists(htmlFile.toPath()); } catch (Exception ignored) {}
+        if (originalOut != null) {
+            System.setOut(originalOut);
+        }
+        try {
+            logger.close();
+        } catch (Exception ignored) {
+            // intentionally ignored — logger may already be closed
+        }
+        try {
+            Files.deleteIfExists(txtFile.toPath());
+        } catch (Exception ignored) {
+            // intentionally ignored
+        }
+        try {
+            Files.deleteIfExists(htmlFile.toPath());
+        } catch (Exception ignored) {
+            // intentionally ignored
+        }
     }
-
+    
     // REQ1: Logger should write commands to TXT and HTML
     @Test
     public void testREQ1_LoggerWritesExactRecords() throws Exception {
@@ -105,11 +133,11 @@ public class ClevisTest {
         String expectedTxt0 = "rectangle rlog 0 0 2 3";
         String expectedTxt1 = "circle clog 1 1 5";
         boolean cond = txt.size() >= 2 &&
-                       expectedTxt0.equals(txt.get(0)) &&
-                       expectedTxt1.equals(txt.get(1)) &&
-                       html.contains("<table") &&
-                       html.contains("<td>1</td><td>rectangle rlog 0 0 2 3</td>") &&
-                       html.contains("<td>2</td><td>circle clog 1 1 5</td>");
+                expectedTxt0.equals(txt.get(0)) &&
+                expectedTxt1.equals(txt.get(1)) &&
+                html.contains("<table") &&
+                html.contains("<td>1</td><td>rectangle rlog 0 0 2 3</td>") &&
+                html.contains("<td>2</td><td>circle clog 1 1 5</td>");
 
         // Print verbose result to instructor console (originalOut)
         printTestResult("REQ1_LoggerWritesExactRecords",
@@ -279,7 +307,7 @@ public class ClevisTest {
     // Invalid numeric format (extra)
     @Test
     public void testInvalidNumberFormat() {
-       // 💡 Expected:
+        // 💡 Expected:
         //   "Error: invalid number format."
         // 🧠 Reasoning:
         // Ensures numeric parsing failures trigger friendly error messages.
@@ -584,8 +612,8 @@ public class ClevisTest {
         String htmlContent = new String(Files.readAllBytes(htmlFile.toPath()));
 
         boolean cond = txtContent.contains("rectangle log1 0 0 2 2") &&
-                       htmlContent.contains("<table") &&
-                       htmlContent.contains("rectangle log1 0 0 2 2");
+                htmlContent.contains("<table") &&
+                htmlContent.contains("rectangle log1 0 0 2 2");
 
         printTestResult("REQ1_LoggerWritesToFiles",
                 "TXT contains 'rectangle log1 0 0 2 2' and HTML contains table and same text",
