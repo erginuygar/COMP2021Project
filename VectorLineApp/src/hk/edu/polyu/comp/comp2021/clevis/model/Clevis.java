@@ -1,12 +1,11 @@
-    package hk.edu.polyu.comp.comp2021.clevis.model;
+package hk.edu.polyu.comp.comp2021.clevis.model;
+import hk.edu.polyu.comp.comp2021.clevis.model.*;
 
 import java.util.*;
-import java.util.logging.*;
 
 
 public class Clevis {
     private static Logger logger;
-    private static final Logger clevis = logger.getLogger(CLEVISTool.class.getName());
     //Main #15
     public static void main(String[] args) {
         try {
@@ -16,8 +15,6 @@ public class Clevis {
                 if (args[i].equalsIgnoreCase("-html")) htmlPath = args[i + 1];
                 if (args[i].equalsIgnoreCase("-txt")) txtPath = args[i + 1];
             }
-
-            Logger logger = new Logger(htmlPath, txtPath);
             ShapeManager manager = new ShapeManager();
             Scanner input = new Scanner(System.in);
             CommandParser parser = new CommandParser(manager, logger);
