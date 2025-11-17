@@ -6,37 +6,39 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 
 public class Logger {
-    private final static Path LOG_PATH = Paths.get("VectorLineApp/src/hk/edu/polyu/comp/comp2021/clevis/model/logs/log.txt");
+    private final static Path DIRECTORY_PATH = Paths.get("VectorLineApp/src/hk/edu/polyu/comp/comp2021/clevis/model/logs/");
+    private static Path LOG_FILE_PATH; 
     private static PrintWriter writer;
-private final static ArrayList<String> execution_history = new ArrayList<>();
-    
-    static {
-        initializeLogger();
-    }
 
-    private static void initializeLogger() {
-        try {
-            Files.createDirectories(LOG_PATH.getParent());
-            System.out.println("Log file: " + LOG_PATH.toAbsolutePath());
+
+    public static void initializeLogger(String log_file, String html_file){ 
+        if (writer != null) {
             
+            close(); 
+        }
+
+        LOG_FILE_PATH = DIRECTORY_PATH.resolve(log_file);
+        
+        try {
+
+            Files.createDirectories(DIRECTORY_PATH); 
+            System.out.println("Log directory ensured: " + DIRECTORY_PATH.toAbsolutePath());
+
             writer = new PrintWriter(
-                Files.newBufferedWriter(LOG_PATH, 
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND,
+                Files.newBufferedWriter(LOG_FILE_PATH, 
+                    StandardOpenOption.CREATE, // Creates the file if it doesn't exist
+                    StandardOpenOption.APPEND, // Appends to the end of the file
                     StandardOpenOption.WRITE));
             
+            System.out.println("Log file ready at: " + LOG_FILE_PATH.toAbsolutePath());
             
         } catch (IOException e) {
             System.err.println("Failed to initialize logger: " + e.getMessage());
+            e.printStackTrace(); // Good practice to print the stack trace for debugging
         }
     }
-
     public static void log(String className, String methodName, Object... arguments) {
         if (writer == null) {
             System.err.println("Logger not initialized properly");
@@ -50,15 +52,15 @@ private final static ArrayList<String> execution_history = new ArrayList<>();
 
     public static String messageParser(String className, String methodName, Object... arguments) {
         StringBuilder parsed = new StringBuilder();
-        parsed.append(className).append("/").append(methodName);
+        parsed.append(className).append(".").append(methodName);
         
         if (arguments == null || arguments.length == 0) {
-            parsed.append("");
+            parsed.append("()");
         } else {
-            parsed.append("/");
+            parsed.append("(");
             for (int i = 0; i < arguments.length; i++) {
                 if (i > 0) {
-                    parsed.append("/");
+                    parsed.append(",");
                 }
                 
                 if (arguments[i] == null) {
@@ -68,6 +70,7 @@ private final static ArrayList<String> execution_history = new ArrayList<>();
                     parsed.append(simpleClassName).append(":").append(arguments[i]);
                 }
             }
+            parsed.append(")");
         }
         
         return parsed.toString();
@@ -82,42 +85,18 @@ private final static ArrayList<String> execution_history = new ArrayList<>();
 
     public static void clearAlt() {
         try {
-            Files.deleteIfExists(LOG_PATH);
-            Files.createFile(LOG_PATH);
+            Files.deleteIfExists(LOG_FILE_PATH);
+            Files.createFile(LOG_FILE_PATH);
             System.out.println("Log file cleared successfully");
         } catch (IOException e) {
             System.err.println("Failed to clear log file: " + e.getMessage());
         }
     }
 
-    public static void CommandExecute(){
-        if(execution_history.size()==0){
-            System.err.println("No execution history.");
-        }
-    }
-    public static void ReadLines(){
-        String fileName = "log.txt";
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(LOG_PATH.toFile()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                execution_history.add(line);
-            }
-
-        } catch (IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-
     public static void main(String[] args) {
-
-        Logger.log("a","b","c","d");
-        ReadLines();
-        for(String a : execution_history){
-            System.out.println(a);
-        }
-    
+        Logger.initializeLogger("log.txt", "log.html");
+        Logger.log("n","b",'c',1,2);
     }
+    
+
 }

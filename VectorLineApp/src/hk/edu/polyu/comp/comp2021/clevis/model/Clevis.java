@@ -11,6 +11,8 @@ public class Clevis {
         try {
             String htmlPath = "log.html";
             String txtPath = "log.txt";
+            Logger.initializeLogger(txtPath, htmlPath);
+            
             for (int i = 0; i < args.length - 1; i++) {
                 if (args[i].equalsIgnoreCase("-html")) htmlPath = args[i + 1];
                 if (args[i].equalsIgnoreCase("-txt")) txtPath = args[i + 1];
