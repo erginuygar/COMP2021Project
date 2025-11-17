@@ -1,2 +1,0 @@
-=== CLEVIS LOG START ===
-[2025-11-11 12:36:18] help
