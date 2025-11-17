@@ -9,51 +9,83 @@ import java.nio.file.StandardOpenOption;
 
 public class Logger {
     private final static Path DIRECTORY_PATH = Paths.get("VectorLineApp/src/hk/edu/polyu/comp/comp2021/clevis/model/logs/");
-    private static Path LOG_FILE_PATH; 
-    private static PrintWriter writer;
+    
+    private static Path LOG_FILE_PATH;
+    private static Path HTML_FILE_PATH;
+    private static PrintWriter logWriter;
+    private static PrintWriter htmlWriter;
+    private static int logIndex = 1; // Add a static counter for the index
 
+    // No static initializer block needed.
 
-    public static void initializeLogger(String log_file, String html_file){ 
-        if (writer != null) {
-            
-            close(); 
-        }
+    public static void initializeLogger(String logFileName, String htmlFileName) {
+        close(); // Close existing writers if re-initializing
 
-        LOG_FILE_PATH = DIRECTORY_PATH.resolve(log_file);
-        
+        LOG_FILE_PATH = DIRECTORY_PATH.resolve(logFileName);
+        HTML_FILE_PATH = DIRECTORY_PATH.resolve(htmlFileName);
+        logIndex = 1; // Reset index when initializing
+
         try {
-
             Files.createDirectories(DIRECTORY_PATH); 
-            System.out.println("Log directory ensured: " + DIRECTORY_PATH.toAbsolutePath());
+            // ... (print statements omitted for brevity) ...
 
-            writer = new PrintWriter(
+            logWriter = new PrintWriter(
                 Files.newBufferedWriter(LOG_FILE_PATH, 
-                    StandardOpenOption.CREATE, // Creates the file if it doesn't exist
-                    StandardOpenOption.APPEND, // Appends to the end of the file
+                    StandardOpenOption.CREATE, 
+                    StandardOpenOption.APPEND,
                     StandardOpenOption.WRITE));
             
-            System.out.println("Log file ready at: " + LOG_FILE_PATH.toAbsolutePath());
+            htmlWriter = new PrintWriter(
+                Files.newBufferedWriter(HTML_FILE_PATH,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.WRITE));
             
+            // Write the initial HTML structure and table header
+            htmlWriter.println("<!DOCTYPE html>");
+            htmlWriter.println("<html>");
+            htmlWriter.println("<head><title>Application Log Report</title></head>");
+            htmlWriter.println("<body><h1>Application Activity Log</h1>");
+            htmlWriter.println("<table border=\"1\">"); // Start the HTML table with a border
+            htmlWriter.println("<tr><th>Index</th><th>Method Log</th></tr>"); // Table Header Row
+
+            // ... (print statements omitted for brevity) ...
+
         } catch (IOException e) {
             System.err.println("Failed to initialize logger: " + e.getMessage());
-            e.printStackTrace(); // Good practice to print the stack trace for debugging
+            e.printStackTrace();
         }
     }
+
     public static void log(String className, String methodName, Object... arguments) {
-        if (writer == null) {
-            System.err.println("Logger not initialized properly");
+        if (logWriter == null || htmlWriter == null) {
+            System.err.println("Logger not initialized properly. Call initializeLogger() first.");
             return;
         }
         
         String parsedArgs = messageParser(className, methodName, arguments);
-        writer.println(parsedArgs);
-        writer.flush();
+        
+        // Write to the plain text file
+        logWriter.println(parsedArgs);
+        logWriter.flush();
+
+        // Write to the HTML file in a table row format
+        htmlWriter.println("<tr>");
+        htmlWriter.println("<td>" + logIndex + "</td>");
+        // Escape potential HTML characters in the log message to prevent issues
+        String safeParsedArgs = parsedArgs.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        htmlWriter.println("<td>" + safeParsedArgs + "</td>");
+        htmlWriter.println("</tr>");
+        htmlWriter.flush();
+        
+        logIndex++; // Increment the index for the next log entry
     }
 
+    // messageParser method remains the same as before
     public static String messageParser(String className, String methodName, Object... arguments) {
         StringBuilder parsed = new StringBuilder();
         parsed.append(className).append(".").append(methodName);
-        
+        // ... (rest of the messageParser implementation) ...
         if (arguments == null || arguments.length == 0) {
             parsed.append("()");
         } else {
@@ -72,26 +104,39 @@ public class Logger {
             }
             parsed.append(")");
         }
-        
         return parsed.toString();
     }
 
     public static void close() {
-        if (writer != null) {
-            writer.close();
-            writer = null;
+        if (logWriter != null) {
+            logWriter.close();
+            logWriter = null;
+        }
+        if (htmlWriter != null) {
+            // Write closing HTML tags including the table closing tag
+            htmlWriter.println("</table>"); // Close the table tag
+            htmlWriter.println("</body></html>");
+            htmlWriter.close();
+            htmlWriter = null;
         }
     }
-
+    
+    // clearAlt method remains the same
     public static void clearAlt() {
+        if (LOG_FILE_PATH == null) {
+            System.err.println("Cannot clear log file: Logger not initialized.");
+            return;
+        }
         try {
-            Files.deleteIfExists(LOG_FILE_PATH);
-            Files.createFile(LOG_FILE_PATH);
-            System.out.println("Log file cleared successfully");
+            Files.deleteIfExists(LOG_FILE_PATH); 
+            System.out.println("Log file cleared successfully. Call initializeLogger again to start logging.");
+            close(); 
         } catch (IOException e) {
             System.err.println("Failed to clear log file: " + e.getMessage());
         }
     }
+
+
 
     public static void main(String[] args) {
         Logger.initializeLogger("log.txt", "log.html");
