@@ -7,22 +7,23 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
-public class ClevisLogger {
-    // ... [DIRECTORY_PATH, LOG_FILE_PATH, HTML_FILE_PATH, writers, logIndex remain the same] ...
+public class Logger {
     private final static Path DIRECTORY_PATH = Paths.get("COMP2021_PROJECT - 202526/COMP2021Project/CLEVIS tool APP/src/hk/edu/polyu/comp/comp2021/clevis/model/logs");
     
     private static Path LOG_FILE_PATH;
     private static Path HTML_FILE_PATH;
     private static PrintWriter logWriter;
     private static PrintWriter htmlWriter;
-    private static int logIndex = 1; 
+    private static int logIndex = 1; // Add a static counter for the index
+
+    // No static initializer block needed.
 
     public static void initializeLogger(String logFileName, String htmlFileName) {
-        // ... [Initialization logic remains the same] ...
-        close(); 
+        close(); // Close existing writers if re-initializing
+
         LOG_FILE_PATH = DIRECTORY_PATH.resolve(logFileName);
         HTML_FILE_PATH = DIRECTORY_PATH.resolve(htmlFileName);
-        logIndex = 1; 
+        logIndex = 1; // Reset index when initializing
 
         try {
             Files.createDirectories(DIRECTORY_PATH); 
@@ -40,12 +41,15 @@ public class ClevisLogger {
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE));
             
+            // Write the initial HTML structure and table header
             htmlWriter.println("<!DOCTYPE html>");
             htmlWriter.println("<html>");
             htmlWriter.println("<head><title>Application Log Report</title></head>");
             htmlWriter.println("<body><h1>Application Activity Log</h1>");
-            htmlWriter.println("<table border=\"1\">"); 
-            htmlWriter.println("<tr><th>Index</th><th>Method Log</th></tr>"); 
+            htmlWriter.println("<table border=\"1\">"); // Start the HTML table with a border
+            htmlWriter.println("<tr><th>Index</th><th>Method Log</th></tr>"); // Table Header Row
+
+            // ... (print statements omitted for brevity) ...
 
         } catch (IOException e) {
             System.err.println("Failed to initialize logger: " + e.getMessage());
@@ -53,26 +57,13 @@ public class ClevisLogger {
         }
     }
 
-    /**
-     * Automatically retrieves calling class and method names using the call stack.
-     */
-       public static void log(Object... arguments) {
+    public static void log(String className, String methodName, Object... arguments) {
         if (logWriter == null || htmlWriter == null) {
             System.err.println("Logger not initialized properly. Call initializeLogger() first.");
             return;
         }
-
-        // Get the stack trace element for the method that called 'ClevisLogger.log()'
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        // Index 0 is getStackTrace(), Index 1 is ClevisLogger.log(), Index 2 is the actual caller.
-        StackTraceElement caller = stackTrace[2]; 
         
-        // Extract only the simple class name (right-most part after last dot)
-        String fullClassName = caller.getClassName();
-        String simpleClassName = getSimpleClassName(fullClassName);
-        String methodName = caller.getMethodName();
-
-        String parsedArgs = messageParser(simpleClassName, methodName, arguments);
+        String parsedArgs = messageParser(className, methodName, arguments);
         
         // Write to the plain text file
         logWriter.println(parsedArgs);
@@ -90,23 +81,11 @@ public class ClevisLogger {
         logIndex++; // Increment the index for the next log entry
     }
 
-    /**
-     * Extracts the simple class name from a fully qualified class name.
-     * Example: "hk.edu.polyu.comp.comp2021.clevis.controller.Clevis" -> "Clevis"
-     */
-private static String getSimpleClassName(String fullClassName) {
-
-    int lastDotIndex = fullClassName.lastIndexOf('.');
-    String simpleName = (lastDotIndex != -1) ? 
-        fullClassName.substring(lastDotIndex + 1) : fullClassName;
-
-    return simpleName.replace('$', '.');
-}
-
-    // messageParser method remains the same (it still needs class/method names internally)
+    // messageParser method remains the same as before
     public static String messageParser(String className, String methodName, Object... arguments) {
         StringBuilder parsed = new StringBuilder();
         parsed.append(className).append(".").append(methodName);
+        // ... (rest of the messageParser implementation) ...
         if (arguments == null || arguments.length == 0) {
             parsed.append("()");
         } else {
@@ -128,36 +107,34 @@ private static String getSimpleClassName(String fullClassName) {
         return parsed.toString();
     }
 
-    // ... [close(), clearAlt() methods remain the same] ...
     public static void close() {
         if (logWriter != null) {
             logWriter.close();
             logWriter = null;
         }
         if (htmlWriter != null) {
-            htmlWriter.println("</table>"); 
+            // Write closing HTML tags including the table closing tag
+            htmlWriter.println("</table>"); // Close the table tag
             htmlWriter.println("</body></html>");
             htmlWriter.close();
             htmlWriter = null;
         }
     }
-
+    
+    // clearAlt method remains the same
     public static void clearAlt() {
-        if (LOG_FILE_PATH == null || HTML_FILE_PATH == null) {
+        if (LOG_FILE_PATH == null) {
             System.err.println("Cannot clear log file: Logger not initialized.");
             return;
         }
         try {
             Files.deleteIfExists(LOG_FILE_PATH); 
             System.out.println("Log file cleared successfully. Call initializeLogger again to start logging.");
-            Files.deleteIfExists(HTML_FILE_PATH); 
-            System.out.println("Html file cleared successfully. Call initializeLogger again to start logging.");
             close(); 
         } catch (IOException e) {
             System.err.println("Failed to clear log file: " + e.getMessage());
         }
     }
-    public static void logCommand(String command) {
-        log(command); 
-}
+
+
 }

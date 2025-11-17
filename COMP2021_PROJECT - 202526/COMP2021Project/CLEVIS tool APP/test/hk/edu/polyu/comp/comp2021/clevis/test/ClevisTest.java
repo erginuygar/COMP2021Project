@@ -17,7 +17,7 @@ public final class ClevisTest {
     /** Manager for all shapes. */
     private ShapeManager manager;
     /** Logger used for recording commands. */
-    private ClevisLogger logger;
+    private Logger logger;
     /** Parser for command execution. */
     private Clevis.CommandParser parser;
     /** Temporary text log file. */

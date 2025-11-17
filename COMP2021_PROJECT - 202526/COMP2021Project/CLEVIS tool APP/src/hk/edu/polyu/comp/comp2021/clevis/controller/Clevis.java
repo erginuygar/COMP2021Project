@@ -17,10 +17,7 @@ public class Clevis {
 
     private final ShapeManager shapeManager;
     private final CommandParser parser;
-    private final ClevisLogger logger;
     private final ConsoleView view;
-
-
 
     /**
      * Initialize Clevis system with given log paths.
@@ -29,9 +26,10 @@ public class Clevis {
      * @param txtPath  text log path
      */
     public Clevis(final String htmlPath, final String txtPath) {
-        this.logger = new ClevisLogger(htmlPath, txtPath);
+        // Initialize the static logger
+        ClevisLogger.initializeLogger(txtPath, htmlPath);
         this.shapeManager = new ShapeManager();
-        this.parser = new CommandParser(shapeManager, logger);
+        this.parser = new CommandParser(shapeManager);
         this.view = new ConsoleView();
     }
 
@@ -61,46 +59,29 @@ public class Clevis {
             }
 
             view.showTerminationMessage();
+        } finally {
+            // Ensure logger is properly closed
+            ClevisLogger.close();
         }
     }
 
-
     /**
      * CommandParser is responsible for interpreting and executing all Clevis commands.
-     *
-     * It implements the main functional requirements (REQ2–REQ16), handling:
-     *
-     *   Shape creation (rectangle, line, circle, square)
-     *   Shape manipulation (move, delete, group, ungroup)
-     *   Information queries (list, listAll, boundingbox, shapeAt, intersect)
-     *   User commands (help, quit)
-     * @version 1.0
-     * @since COMP2021 Project — Clevis Tool
      */
     public static class CommandParser {
         private final ShapeManager manager;
-        private final ClevisLogger logger;
         private boolean testMode = false;
+
         /**
          * Constructs a new {@code CommandParser} instance.
-         * <p>
-         * This parser interprets and executes all user commands entered in the Clevis console.
-         * It uses the provided {@link ShapeManager} to manage shapes and the {@link ClevisLogger}
-         * to record every command execution for REQ1 compliance.
-         *
-         * @param manager the shape manager responsible for storing and manipulating all shapes
-         * @param logger  the logger responsible for recording user commands
          */
-        public CommandParser(final ShapeManager manager, final ClevisLogger logger) {
+        public CommandParser(final ShapeManager manager) {
             this.manager = manager;
-            this.logger = logger;
         }
 
         /**
          * Execute a single command string.
          * Logs every executed command (REQ1).
-         *
-         * @param command user input command string
          */
         public void execute(final String command) {
             if (command == null) {
@@ -112,8 +93,8 @@ public class Clevis {
                 return;
             }
 
-            // Log command (REQ1). We log before execution so even failing commands appear.
-            logger.logCommand(trimmed);
+            // Log command (REQ1) using the new automatic caller detection
+            ClevisLogger.logCommand(trimmed);
 
             final String[] tokens = trimmed.split("\\s+");
             final String op = tokens[0].toLowerCase(Locale.ROOT);
@@ -160,44 +141,38 @@ public class Clevis {
                         listAll(tokens);
                         break;
                     case "quit":
-                        // Log this quit command (REQ1)
-                        logger.logCommand(trimmed);
                         quit();
                         break;
                     case "help":
                         showHelp();
                         break;
-
                     default:
                         System.out.println("Unknown command: " + op);
                 }
             } catch (ClevisException e) {
                 System.out.println("Error: " + e.getMessage());
+                // Log the error as well
+                ClevisLogger.log("Error executing command", trimmed, e.getMessage());
             } catch (NumberFormatException e) {
                 System.out.println("Error: invalid number format.");
+                ClevisLogger.log("NumberFormatException", trimmed, e.getMessage());
             } catch (RuntimeException e) {
                 System.out.println("Runtime error: " + e.getMessage());
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+                ClevisLogger.log("RuntimeException", trimmed, e.getMessage());
             }
         }
 
         /**
          * Enables or disables test mode.
-         * When test mode is true, the quit() command will not terminate the JVM.
-         *
-         * @param mode true to enable test mode, false to disable it
          */
         public void setTestMode(boolean mode) {
             this.testMode = mode;
         }
 
-        //Command handlers
+        // Command handlers (all remain the same except for additional logging)
+        
         /**
-         * [REQ2] The tool should support drawing a rectangle.
-         * Command: rectangle n x y w h
-         * Effect: Creates a new rectangle that has a name n, whose top-left corner is at
-         * location (x, y), and whose width and height are w and h, respectively.
+         * [REQ2] Create rectangle
          */
         private void createRectangle(final String[] tokens) throws ClevisException {
             if (tokens.length != 6) {
@@ -214,16 +189,16 @@ public class Clevis {
                 manager.addShape(rectangle);
                 System.out.printf("Created a Rectangle named %s at (%.2f,%.2f) w=%.2f h=%.2f%n",
                         name, x, y, width, height);
+                
+                // Log successful creation
+                ClevisLogger.log("Rectangle created", name, x, y, width, height);
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
         }
 
         /**
-         * [REQ3] The tool should support drawing a line segment.
-         * Command: line n x1 y1 x2 y2
-         * Effect: Creates a new line segment that has a name n and whose two ends are at
-         * locations (x1, y1) and (x2, y2), respectively.
+         * [REQ3] Create line
          */
         private void createLine(final String[] tokens) throws ClevisException {
             if (tokens.length != 6) {
@@ -240,16 +215,15 @@ public class Clevis {
                 manager.addShape(line);
                 System.out.printf("Created line %s from (%.2f,%.2f) to (%.2f,%.2f)%n",
                         name, x1, y1, x2, y2);
+                
+                ClevisLogger.log("Line created", name, x1, y1, x2, y2);
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
         }
 
         /**
-         * [REQ4] The tool should support drawing a circle.
-         * Command: circle n x y r
-         * Effect: Creates a new circle that has a name n, whose center is at location (x, y),
-         * and whose radius is r.
+         * [REQ4] Create circle
          */
         private void createCircle(final String[] tokens) throws ClevisException {
             if (tokens.length != 5) {
@@ -265,16 +239,15 @@ public class Clevis {
                 manager.addShape(circle);
                 System.out.printf("Created circle %s center=(%.2f,%.2f) r=%.2f%n",
                         name, x, y, radius);
+                
+                ClevisLogger.log("Circle created", name, x, y, radius);
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
         }
 
         /**
-         * [REQ5] The tool should support drawing a square.
-         * Command: square n x y l
-         * Effect: Creates a new square that has a name n, whose top-left corner is at
-         * location (x, y), and whose side length is l.
+         * [REQ5] Create square
          */
         private void createSquare(final String[] tokens) throws ClevisException {
             if (tokens.length != 5) {
@@ -289,15 +262,15 @@ public class Clevis {
                 final Square square = new Square(name, x, y, length);
                 manager.addShape(square);
                 System.out.printf("Created square %s at (%.2f,%.2f) side=%.2f%n", name, x, y, length);
+                
+                ClevisLogger.log("Square created", name, x, y, length);
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
         }
 
         /**
-         * [REQ6] The tool should support grouping a non-empty list of shapes into one shape.
-         * Command: group n n1 n2 ...
-         * Effect: Creates a new shape named n by grouping existing shapes named n1, n2, ...
+         * [REQ6] Group shapes
          */
         private void groupShapes(final String[] tokens) throws ClevisException {
             if (tokens.length < 3) {
@@ -332,12 +305,11 @@ public class Clevis {
             }
 
             System.out.printf("Created group %s containing: %s%n", groupName, memberNames.toString());
+            ClevisLogger.log("Group created", groupName, memberNames.toString());
         }
 
         /**
-         * [REQ7] The tool should support ungrouping a shape that was created by grouping shapes.
-         * Command: ungroup n
-         * Effect: Ungroups shape n into its component shapes.
+         * [REQ7] Ungroup shapes
          */
         private void ungroupShapes(final String[] tokens) throws ClevisException {
             if (tokens.length != 2) {
@@ -366,10 +338,11 @@ public class Clevis {
             }
 
             System.out.printf("Ungrouped %s into: %s%n", groupName, memberNames.toString());
+            ClevisLogger.log("Group ungrouped", groupName, memberNames.toString());
         }
 
         /**
-         * [REQ8] Delete a shape by name.
+         * [REQ8] Delete shape
          */
         private void deleteShape(final String[] tokens) throws ClevisException {
             if (tokens.length != 2) {
@@ -377,12 +350,11 @@ public class Clevis {
             }
             manager.deleteShape(tokens[1]);
             System.out.println("Deleted shape " + tokens[1]);
+            ClevisLogger.log("Shape deleted", tokens[1]);
         }
 
         /**
-         * [REQ9] The tool should support calculating the minimum bounding box of a shape.
-         * Command: boundingbox n
-         * Effect: Calculates and outputs the minimum bounding box of the shape name n.
+         * [REQ9] Calculate bounding box
          */
         private void calculateBoundingBox(final String[] tokens) throws ClevisException {
             if (tokens.length != 2) {
@@ -400,12 +372,11 @@ public class Clevis {
 
             System.out.printf("Bounding box of %s: (x=%.2f, y=%.2f, width=%.2f, height=%.2f)%n",
                     name, x, y, w, h);
+            ClevisLogger.log("Bounding box calculated", name, x, y, w, h);
         }
 
         /**
-         * [REQ10] The tool should support moving a shape.
-         * Command: move n dx dy
-         * Effect: Moves the shape named n, horizontally by dx and vertically by dy.
+         * [REQ10] Move shape
          */
         private void moveShape(final String[] tokens) throws ClevisException {
             if (tokens.length != 4) {
@@ -422,15 +393,14 @@ public class Clevis {
                 }
                 s.move(dx, dy);
                 System.out.printf("Moved %s by (%.2f,%.2f)%n", name, dx, dy);
+                ClevisLogger.log("Shape moved", name, dx, dy);
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
         }
 
         /**
-         * [REQ11] The tool should support finding the topmost shape that covers a point.
-         * Command: shapeAt x y
-         * Effect: Returns the name of the shape with the highest Z-index that covers point (x, y).
+         * [REQ11] Find topmost shape at point
          */
         private void findTopmost(final String[] tokens) {
             if (tokens.length != 3) {
@@ -444,16 +414,16 @@ public class Clevis {
                 final Shape shape = allShapes.get(i);
                 if (shape.coversPoint(x, y)) {
                     System.out.println("The topmost shape covering point (" + x + ", " + y + ") is: " + shape.getName());
+                    ClevisLogger.log("Shape found at point", shape.getName(), x, y);
                     return;
                 }
             }
             System.out.println("No shape covers the given point (" + x + ", " + y + ").");
+            ClevisLogger.log("No shape found at point", x, y);
         }
 
         /**
-         * [REQ12] The tool should support reporting whether two shapes intersect with each other.
-         * Command: intersect n1 n2
-         * Effect: Reports whether two shapes n1 and n2 intersect with each other.
+         * [REQ12] Check intersection
          */
         private void intersect(final String[] tokens) {
             if (tokens.length != 3) {
@@ -486,12 +456,11 @@ public class Clevis {
             final boolean separated = (x1 + w1 < x2) || (x2 + w2 < x1) || (y1 + h1 < y2) || (y2 + h2 < y1);
             final boolean result = !separated;
             System.out.printf("Shapes %s and %s intersect: %b%n", n1, n2, result);
+            ClevisLogger.log("Intersection check", n1, n2, result);
         }
 
         /**
-         * [REQ13] The tool should support listing the basic information about a shape.
-         * Command: list n
-         * Effect: Lists the basic information about the shape named n.
+         * [REQ13] List shape info
          */
         private void listShape(final String[] tokens) {
             if (tokens.length != 2) {
@@ -503,13 +472,11 @@ public class Clevis {
                 throw new RuntimeException("Shape not found: " + name);
             }
             System.out.println("Shape " + name + ": " + shape.getInfo());
-
+            ClevisLogger.log("Shape listed", name);
         }
 
         /**
-         * [REQ14] The tool should support listing all shapes that have been drawn.
-         * Command: listAll
-         * Effect: Lists the basic information about all shapes in decreasing Z-order.
+         * [REQ14] List all shapes
          */
         private void listAll(final String[] tokens) {
             if (tokens.length != 1) {
@@ -532,24 +499,22 @@ public class Clevis {
                     }
                 }
             }
+            ClevisLogger.log("All shapes listed", allShapes.size() + " shapes");
         }
 
         /**
          * [REQ15] Quit Command
-         * Command: quit
-         * Effect: Exits the Clevis application safely.
          */
         private void quit() {
             System.out.println("Clevis session ended. Logs saved.");
-            logger.close();
+            ClevisLogger.close();
             if (!testMode) {
                 System.exit(0);
             }
         }
+
         /**
-         * [REQ16] Help command: displays all available commands and usage instructions.
-         * Command: help
-         * Effect: Prints information about how to use Clevis and its supported commands.
+         * [REQ16] Help command
          */
         private void showHelp() {
             System.out.println("""
@@ -574,6 +539,7 @@ public class Clevis {
               "quit": Exit Clevis and save logs.
             =================================================================
             """);
+            ClevisLogger.log("Help displayed");
         }
     }
 }

@@ -1,5 +1,5 @@
-=== CLEVIS LOG START ===
-[2025-11-11 12:36:18] help
-[2025-11-17 20:55:49] help
-[2025-11-17 20:55:54] quit
-[2025-11-17 20:55:54] quit
+ClevisLogger.logCommand(String:rectangle one 1 10 10 10)
+Clevis.CommandParser.createRectangle(String:Rectangle created,String:one,Double:1.0,Double:10.0,Double:10.0,Double:10.0)
+ClevisLogger.logCommand(String:quit)
+ClevisLogger.logCommand(String:help)
+Clevis.CommandParser.showHelp(String:Help displayed)
