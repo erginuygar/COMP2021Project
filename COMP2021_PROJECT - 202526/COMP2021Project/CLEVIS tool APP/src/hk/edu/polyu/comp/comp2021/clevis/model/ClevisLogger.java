@@ -100,7 +100,7 @@ private static String getSimpleClassName(String fullClassName) {
     String simpleName = (lastDotIndex != -1) ? 
         fullClassName.substring(lastDotIndex + 1) : fullClassName;
 
-    return simpleName.replace('$', '.');
+    return simpleName;
 }
 
     // messageParser method remains the same (it still needs class/method names internally)
