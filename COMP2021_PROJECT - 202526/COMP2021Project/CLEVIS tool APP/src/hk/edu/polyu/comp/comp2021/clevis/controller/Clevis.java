@@ -541,4 +541,5 @@ public class Clevis {
             // No additional logging needed - help command is already logged
         }
     }
+        
 }

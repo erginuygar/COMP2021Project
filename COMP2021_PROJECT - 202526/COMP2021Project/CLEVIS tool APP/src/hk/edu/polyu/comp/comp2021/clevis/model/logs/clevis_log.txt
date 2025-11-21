@@ -1,2 +1,1 @@
-help
-rectangle one 1 1 20 20
+rectangle one 1 1 10 10
