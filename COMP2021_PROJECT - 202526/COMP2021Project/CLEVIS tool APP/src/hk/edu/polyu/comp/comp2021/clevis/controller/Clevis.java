@@ -32,6 +32,19 @@ public class Clevis {
         this.parser = new CommandParser(shapeManager);
         this.view = new ConsoleView();
     }
+        /**
+     * Get the shape manager for GUI access.
+     */
+    public ShapeManager getShapeManager() {
+        return shapeManager;
+    }
+
+    /**
+     * Get the command parser for GUI access.
+     */
+    public CommandParser getParser() {
+        return parser;
+    }
 
     /**
      * Run interactive CLI.
@@ -78,7 +91,7 @@ public class Clevis {
         public CommandParser(final ShapeManager manager) {
             this.manager = manager;
         }
-
+        
         /**
          * Execute a single command string.
          * Logs every executed command (REQ1).

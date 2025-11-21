@@ -18,12 +18,16 @@ public class ClevisGUI {
     private ShapeManager shapeManager;
     
     public ClevisGUI(ShapeManager shapeManager, Clevis.CommandParser parser) {
+        System.out.println("DEBUG: ClevisGUI constructor started");
         this.shapeManager = shapeManager;
         this.parser = parser;
         initializeGUI();
+        System.out.println("DEBUG: ClevisGUI constructor completed");
     }
     
     private void initializeGUI() {
+        System.out.println("DEBUG: Initializing GUI components...");
+        
         mainFrame = new JFrame("Clevis Drawing Tool - GUI");
         mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mainFrame.setLayout(new BorderLayout());
@@ -34,9 +38,18 @@ public class ClevisGUI {
         createCommandPanel();
         
         mainFrame.pack();
-        mainFrame.setSize(1200, 800);
-        mainFrame.setLocationRelativeTo(null);
+        mainFrame.setSize(800, 600); // Smaller for testing
+        mainFrame.setLocationRelativeTo(null); // Center on screen
+        
+        // Force the frame to be visible and focused
         mainFrame.setVisible(true);
+        mainFrame.toFront();
+        mainFrame.requestFocus();
+        
+        System.out.println("DEBUG: GUI initialization complete");
+        System.out.println("DEBUG: Frame visible: " + mainFrame.isVisible());
+        System.out.println("DEBUG: Frame showing: " + mainFrame.isShowing());
+        System.out.println("DEBUG: Frame title: " + mainFrame.getTitle());
         
         // Initial status message
         commandHistory.append("Clevis GUI Started\n");

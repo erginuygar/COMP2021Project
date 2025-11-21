@@ -23,7 +23,7 @@ public class Application {
         // Default file paths
         String htmlLog = "clevis_log.html";
         String txtLog = "clevis_log.txt";
-        boolean useGUI = false;
+        boolean useGUI = true;
         boolean showHelp = false;
 
         // === REQ1: Parse command-line arguments for log file paths ===
