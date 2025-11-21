@@ -8,156 +8,152 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 public class ClevisLogger {
-    // ... [DIRECTORY_PATH, LOG_FILE_PATH, HTML_FILE_PATH, writers, logIndex remain the same] ...
-    private final static Path DIRECTORY_PATH = Paths.get("COMP2021_PROJECT - 202526/COMP2021Project/CLEVIS tool APP/src/hk/edu/polyu/comp/comp2021/clevis/model/logs");
-    
     private static Path LOG_FILE_PATH;
     private static Path HTML_FILE_PATH;
     private static PrintWriter logWriter;
     private static PrintWriter htmlWriter;
-    private static int logIndex = 1; 
+    private static int logIndex = 1;
+    private static boolean initialized = false;
 
-    public static void initializeLogger(String logFileName, String htmlFileName) {
-        // ... [Initialization logic remains the same] ...
-        close(); 
-        LOG_FILE_PATH = DIRECTORY_PATH.resolve(logFileName);
-        HTML_FILE_PATH = DIRECTORY_PATH.resolve(htmlFileName);
-        logIndex = 1; 
+    /**
+     * Initialize logger with user-specified file paths
+     */
+    public static void initializeLogger(String txtPath, String htmlPath) {
+        close();
+        
+        LOG_FILE_PATH = Paths.get(txtPath);
+        HTML_FILE_PATH = Paths.get(htmlPath);
+        logIndex = 1;
+        initialized = false;
 
         try {
-            Files.createDirectories(DIRECTORY_PATH); 
-            // ... (print statements omitted for brevity) ...
+            // Create parent directories if they don't exist
+            createParentDirs(LOG_FILE_PATH);
+            createParentDirs(HTML_FILE_PATH);
 
+            // Initialize text log file (overwrite mode)
             logWriter = new PrintWriter(
                 Files.newBufferedWriter(LOG_FILE_PATH, 
                     StandardOpenOption.CREATE, 
-                    StandardOpenOption.APPEND,
+                    StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE));
-            
+
+            // Initialize HTML log file (overwrite mode)
             htmlWriter = new PrintWriter(
                 Files.newBufferedWriter(HTML_FILE_PATH,
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE));
             
+            // Write HTML header
             htmlWriter.println("<!DOCTYPE html>");
             htmlWriter.println("<html>");
-            htmlWriter.println("<head><title>Application Log Report</title></head>");
-            htmlWriter.println("<body><h1>Application Activity Log</h1>");
-            htmlWriter.println("<table border=\"1\">"); 
-            htmlWriter.println("<tr><th>Index</th><th>Method Log</th></tr>"); 
+            htmlWriter.println("<head>");
+            htmlWriter.println("<title>Clevis Command Log</title>");
+            htmlWriter.println("<style>");
+            htmlWriter.println("table { border-collapse: collapse; width: 100%; }");
+            htmlWriter.println("th, td { border: 1px solid black; padding: 8px; text-align: left; }");
+            htmlWriter.println("th { background-color: #f2f2f2; }");
+            htmlWriter.println("</style>");
+            htmlWriter.println("</head>");
+            htmlWriter.println("<body>");
+            htmlWriter.println("<h1>Clevis Command Log</h1>");
+            htmlWriter.println("<table>");
+            htmlWriter.println("<tr><th>Index</th><th>Command</th></tr>");
+            
+            initialized = true;
+            System.out.println("Logger initialized successfully");
+            System.out.println("  Text log: " + LOG_FILE_PATH.toAbsolutePath());
+            System.out.println("  HTML log: " + HTML_FILE_PATH.toAbsolutePath());
 
         } catch (IOException e) {
             System.err.println("Failed to initialize logger: " + e.getMessage());
             e.printStackTrace();
+            initialized = false;
         }
     }
 
     /**
-     * Automatically retrieves calling class and method names using the call stack.
+     * Create parent directories for a file path, handling null parent (current directory)
      */
-       public static void log(Object... arguments) {
-        if (logWriter == null || htmlWriter == null) {
+    private static void createParentDirs(Path filePath) throws IOException {
+        Path parent = filePath.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+            System.out.println("Created directory: " + parent.toAbsolutePath());
+        }
+        // If parent is null, the file is in current directory - no need to create directories
+    }
+
+    /**
+     * Log a command to both files according to requirements
+     */
+    public static void logCommand(String command) {
+        if (!initialized || logWriter == null || htmlWriter == null) {
             System.err.println("Logger not initialized properly. Call initializeLogger() first.");
             return;
         }
 
-        // Get the stack trace element for the method that called 'ClevisLogger.log()'
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        // Index 0 is getStackTrace(), Index 1 is ClevisLogger.log(), Index 2 is the actual caller.
-        StackTraceElement caller = stackTrace[2]; 
-        
-        // Extract only the simple class name (right-most part after last dot)
-        String fullClassName = caller.getClassName();
-        String simpleClassName = getSimpleClassName(fullClassName);
-        String methodName = caller.getMethodName();
+        try {
+            // Write to plain text file (one command per line)
+            logWriter.println(command);
+            logWriter.flush();
 
-        String parsedArgs = messageParser(simpleClassName, methodName, arguments);
-        
-        // Write to the plain text file
-        logWriter.println(parsedArgs);
-        logWriter.flush();
+            // Write to HTML file (table row with index and command)
+            htmlWriter.println("<tr>");
+            htmlWriter.println("<td>" + logIndex + "</td>");
+            // Escape HTML special characters in the command
+            String escapedCommand = command.replace("&", "&amp;")
+                                         .replace("<", "&lt;")
+                                         .replace(">", "&gt;")
+                                         .replace("\"", "&quot;")
+                                         .replace("'", "&#39;");
+            htmlWriter.println("<td>" + escapedCommand + "</td>");
+            htmlWriter.println("</tr>");
+            htmlWriter.flush();
+            
+            logIndex++;
 
-        // Write to the HTML file in a table row format
-        htmlWriter.println("<tr>");
-        htmlWriter.println("<td>" + logIndex + "</td>");
-        // Escape potential HTML characters in the log message to prevent issues
-        String safeParsedArgs = parsedArgs.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-        htmlWriter.println("<td>" + safeParsedArgs + "</td>");
-        htmlWriter.println("</tr>");
-        htmlWriter.flush();
-        
-        logIndex++; // Increment the index for the next log entry
+        } catch (Exception e) {
+            System.err.println("Failed to write log: " + e.getMessage());
+        }
     }
 
     /**
-     * Extracts the simple class name from a fully qualified class name.
-     * Example: "hk.edu.polyu.comp.comp2021.clevis.controller.Clevis" -> "Clevis"
+     * Close the logger and write HTML footer
      */
-private static String getSimpleClassName(String fullClassName) {
-
-    int lastDotIndex = fullClassName.lastIndexOf('.');
-    String simpleName = (lastDotIndex != -1) ? 
-        fullClassName.substring(lastDotIndex + 1) : fullClassName;
-
-    return simpleName;
-}
-
-    // messageParser method remains the same (it still needs class/method names internally)
-    public static String messageParser(String className, String methodName, Object... arguments) {
-        StringBuilder parsed = new StringBuilder();
-        parsed.append(className).append(".").append(methodName);
-        if (arguments == null || arguments.length == 0) {
-            parsed.append("()");
-        } else {
-            parsed.append("(");
-            for (int i = 0; i < arguments.length; i++) {
-                if (i > 0) {
-                    parsed.append(",");
-                }
-                
-                if (arguments[i] == null) {
-                    parsed.append("null");
-                } else {
-                    String simpleClassName = arguments[i].getClass().getSimpleName();
-                    parsed.append(simpleClassName).append(":").append(arguments[i]);
-                }
-            }
-            parsed.append(")");
-        }
-        return parsed.toString();
-    }
-
-    // ... [close(), clearAlt() methods remain the same] ...
     public static void close() {
+        if (htmlWriter != null) {
+            try {
+                htmlWriter.println("</table>");
+                htmlWriter.println("</body>");
+                htmlWriter.println("</html>");
+            } catch (Exception e) {
+                // Ignore errors during closing
+            }
+            htmlWriter.close();
+            htmlWriter = null;
+        }
+        
         if (logWriter != null) {
             logWriter.close();
             logWriter = null;
         }
-        if (htmlWriter != null) {
-            htmlWriter.println("</table>"); 
-            htmlWriter.println("</body></html>");
-            htmlWriter.close();
-            htmlWriter = null;
-        }
+        
+        initialized = false;
     }
 
-    public static void clearAlt() {
-        if (LOG_FILE_PATH == null || HTML_FILE_PATH == null) {
-            System.err.println("Cannot clear log file: Logger not initialized.");
-            return;
-        }
-        try {
-            Files.deleteIfExists(LOG_FILE_PATH); 
-            System.out.println("Log file cleared successfully. Call initializeLogger again to start logging.");
-            Files.deleteIfExists(HTML_FILE_PATH); 
-            System.out.println("Html file cleared successfully. Call initializeLogger again to start logging.");
-            close(); 
-        } catch (IOException e) {
-            System.err.println("Failed to clear log file: " + e.getMessage());
-        }
+    /**
+     * Check if logger is properly initialized
+     */
+    public static boolean isInitialized() {
+        return initialized;
     }
-    public static void logCommand(String command) {
-        log(command); 
-}
+
+    /**
+     * Get the current log index (for testing purposes)
+     */
+    public static int getLogIndex() {
+        return logIndex;
+    }
 }

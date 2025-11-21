@@ -93,7 +93,7 @@ public class Clevis {
                 return;
             }
 
-            // Log command (REQ1) using the new automatic caller detection
+            // Log command (REQ1) - this is the main logging call
             ClevisLogger.logCommand(trimmed);
 
             final String[] tokens = trimmed.split("\\s+");
@@ -148,17 +148,19 @@ public class Clevis {
                         break;
                     default:
                         System.out.println("Unknown command: " + op);
+                        // Log unknown command - just use logCommand
+                        ClevisLogger.logCommand("Error: Unknown command - " + op);
                 }
             } catch (ClevisException e) {
                 System.out.println("Error: " + e.getMessage());
-                // Log the error as well
-                ClevisLogger.log("Error executing command", trimmed, e.getMessage());
+                // Log the error - use logCommand for error messages too
+                ClevisLogger.logCommand("Error: " + e.getMessage() + " [Command: " + trimmed + "]");
             } catch (NumberFormatException e) {
                 System.out.println("Error: invalid number format.");
-                ClevisLogger.log("NumberFormatException", trimmed, e.getMessage());
+                ClevisLogger.logCommand("Error: Invalid number format [Command: " + trimmed + "]");
             } catch (RuntimeException e) {
                 System.out.println("Runtime error: " + e.getMessage());
-                ClevisLogger.log("RuntimeException", trimmed, e.getMessage());
+                ClevisLogger.logCommand("Runtime Error: " + e.getMessage() + " [Command: " + trimmed + "]");
             }
         }
 
@@ -169,8 +171,8 @@ public class Clevis {
             this.testMode = mode;
         }
 
-        // Command handlers (all remain the same except for additional logging)
-        
+        // Command handlers - remove all the detailed logging calls, only command logging is needed
+
         /**
          * [REQ2] Create rectangle
          */
@@ -190,8 +192,7 @@ public class Clevis {
                 System.out.printf("Created a Rectangle named %s at (%.2f,%.2f) w=%.2f h=%.2f%n",
                         name, x, y, width, height);
                 
-                // Log successful creation
-                ClevisLogger.log("Rectangle created", name, x, y, width, height);
+                // No need for additional logging - the command is already logged by execute()
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
@@ -216,7 +217,7 @@ public class Clevis {
                 System.out.printf("Created line %s from (%.2f,%.2f) to (%.2f,%.2f)%n",
                         name, x1, y1, x2, y2);
                 
-                ClevisLogger.log("Line created", name, x1, y1, x2, y2);
+                // No additional logging needed
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
@@ -240,7 +241,7 @@ public class Clevis {
                 System.out.printf("Created circle %s center=(%.2f,%.2f) r=%.2f%n",
                         name, x, y, radius);
                 
-                ClevisLogger.log("Circle created", name, x, y, radius);
+                // No additional logging needed
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
@@ -263,7 +264,7 @@ public class Clevis {
                 manager.addShape(square);
                 System.out.printf("Created square %s at (%.2f,%.2f) side=%.2f%n", name, x, y, length);
                 
-                ClevisLogger.log("Square created", name, x, y, length);
+                // No additional logging needed
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
@@ -305,7 +306,7 @@ public class Clevis {
             }
 
             System.out.printf("Created group %s containing: %s%n", groupName, memberNames.toString());
-            ClevisLogger.log("Group created", groupName, memberNames.toString());
+            // No additional logging needed - command is already logged
         }
 
         /**
@@ -338,7 +339,7 @@ public class Clevis {
             }
 
             System.out.printf("Ungrouped %s into: %s%n", groupName, memberNames.toString());
-            ClevisLogger.log("Group ungrouped", groupName, memberNames.toString());
+            // No additional logging needed
         }
 
         /**
@@ -350,7 +351,7 @@ public class Clevis {
             }
             manager.deleteShape(tokens[1]);
             System.out.println("Deleted shape " + tokens[1]);
-            ClevisLogger.log("Shape deleted", tokens[1]);
+            // No additional logging needed
         }
 
         /**
@@ -372,7 +373,7 @@ public class Clevis {
 
             System.out.printf("Bounding box of %s: (x=%.2f, y=%.2f, width=%.2f, height=%.2f)%n",
                     name, x, y, w, h);
-            ClevisLogger.log("Bounding box calculated", name, x, y, w, h);
+            // No additional logging needed
         }
 
         /**
@@ -393,7 +394,7 @@ public class Clevis {
                 }
                 s.move(dx, dy);
                 System.out.printf("Moved %s by (%.2f,%.2f)%n", name, dx, dy);
-                ClevisLogger.log("Shape moved", name, dx, dy);
+                // No additional logging needed
             } catch (NumberFormatException e) {
                 throw new ClevisException("The parameters except for name must be valid numbers.");
             }
@@ -414,12 +415,10 @@ public class Clevis {
                 final Shape shape = allShapes.get(i);
                 if (shape.coversPoint(x, y)) {
                     System.out.println("The topmost shape covering point (" + x + ", " + y + ") is: " + shape.getName());
-                    ClevisLogger.log("Shape found at point", shape.getName(), x, y);
                     return;
                 }
             }
             System.out.println("No shape covers the given point (" + x + ", " + y + ").");
-            ClevisLogger.log("No shape found at point", x, y);
         }
 
         /**
@@ -456,7 +455,7 @@ public class Clevis {
             final boolean separated = (x1 + w1 < x2) || (x2 + w2 < x1) || (y1 + h1 < y2) || (y2 + h2 < y1);
             final boolean result = !separated;
             System.out.printf("Shapes %s and %s intersect: %b%n", n1, n2, result);
-            ClevisLogger.log("Intersection check", n1, n2, result);
+            // No additional logging needed
         }
 
         /**
@@ -472,7 +471,7 @@ public class Clevis {
                 throw new RuntimeException("Shape not found: " + name);
             }
             System.out.println("Shape " + name + ": " + shape.getInfo());
-            ClevisLogger.log("Shape listed", name);
+            // No additional logging needed
         }
 
         /**
@@ -499,7 +498,7 @@ public class Clevis {
                     }
                 }
             }
-            ClevisLogger.log("All shapes listed", allShapes.size() + " shapes");
+            // No additional logging needed
         }
 
         /**
@@ -539,7 +538,7 @@ public class Clevis {
               "quit": Exit Clevis and save logs.
             =================================================================
             """);
-            ClevisLogger.log("Help displayed");
+            // No additional logging needed - help command is already logged
         }
     }
 }
