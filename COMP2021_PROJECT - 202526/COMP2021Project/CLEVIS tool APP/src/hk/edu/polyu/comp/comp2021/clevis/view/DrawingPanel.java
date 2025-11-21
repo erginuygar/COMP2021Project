@@ -4,10 +4,17 @@ import hk.edu.polyu.comp.comp2021.clevis.model.ShapeManager;
 import hk.edu.polyu.comp.comp2021.clevis.model.Shape;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.geom.AffineTransform;
 import java.util.List;
 
 public class DrawingPanel extends JPanel {
     private ShapeManager shapeManager;
+    private double zoomFactor = 1.0;
+    private double minZoom = 0.1;
+    private double maxZoom = 5.0;
+    private double zoomStep = 0.2;
+    private int panX = 0;
+    private int panY = 0;
     
     public DrawingPanel(ShapeManager shapeManager) {
         this.shapeManager = shapeManager;
@@ -15,23 +22,149 @@ public class DrawingPanel extends JPanel {
         setPreferredSize(new Dimension(800, 600));
     }
     
+    /**
+     * Zoom in by increasing the zoom factor
+     */
+    public void zoomIn() {
+        double newZoom = Math.min(maxZoom, zoomFactor + zoomStep);
+        if (newZoom != zoomFactor) {
+            zoomFactor = newZoom;
+            repaint();
+        }
+    }
+    
+    /**
+     * Zoom out by decreasing the zoom factor
+     */
+    public void zoomOut() {
+        double newZoom = Math.max(minZoom, zoomFactor - zoomStep);
+        if (newZoom != zoomFactor) {
+            zoomFactor = newZoom;
+            repaint();
+        }
+    }
+    
+    /**
+     * Reset zoom to 100%
+     */
+    public void resetZoom() {
+        if (zoomFactor != 1.0) {
+            zoomFactor = 1.0;
+            panX = 0;
+            panY = 0;
+            repaint();
+        }
+    }
+    
+    /**
+     * Fit all shapes to screen
+     */
+    public void fitToScreen() {
+        List<Shape> shapes = shapeManager.getAllShapes();
+        if (shapes.isEmpty()) {
+            resetZoom();
+            return;
+        }
+        
+        // Calculate the bounding box of all shapes
+        double minX = Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE;
+        double maxX = Double.MIN_VALUE;
+        double maxY = Double.MIN_VALUE;
+        
+        for (Shape shape : shapes) {
+            try {
+                String bbox = shape.getBoundingBox();
+                String[] coords = bbox.split("\\s+");
+                if (coords.length >= 4) {
+                    double x = Double.parseDouble(coords[0]);
+                    double y = Double.parseDouble(coords[1]);
+                    double w = Double.parseDouble(coords[2]);
+                    double h = Double.parseDouble(coords[3]);
+                    
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x + w);
+                    maxY = Math.max(maxY, y + h);
+                }
+            } catch (Exception e) {
+                // Skip shapes with invalid bounding boxes
+            }
+        }
+        
+        if (minX == Double.MAX_VALUE) {
+            resetZoom();
+            return;
+        }
+        
+        // Calculate required zoom to fit all shapes
+        double shapeWidth = maxX - minX;
+        double shapeHeight = maxY - minY;
+        double panelWidth = getWidth() - 40; // Leave some margin
+        double panelHeight = getHeight() - 40;
+        
+        double zoomX = panelWidth / shapeWidth;
+        double zoomY = panelHeight / shapeHeight;
+        
+        zoomFactor = Math.min(zoomX, zoomY);
+        zoomFactor = Math.max(minZoom, Math.min(maxZoom, zoomFactor));
+        
+        // Center the view
+        panX = (int) ((getWidth() - shapeWidth * zoomFactor) / 2 - minX * zoomFactor);
+        panY = (int) ((getHeight() - shapeHeight * zoomFactor) / 2 - minY * zoomFactor);
+        
+        repaint();
+    }
+    
+    /**
+     * Get current zoom factor
+     */
+    public double getZoomFactor() {
+        return zoomFactor;
+    }
+    
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, 
-                           RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // Get shapes using the correct type
+        // Set rendering hints for better quality
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        
+        // Apply zoom and pan transformations
+        AffineTransform originalTransform = g2d.getTransform();
+        g2d.translate(panX, panY);
+        g2d.scale(zoomFactor, zoomFactor);
+        
+        // Draw all shapes
         List<Shape> shapes = shapeManager.getAllShapes();
         for (Shape shape : shapes) {
             drawShape(g2d, shape);
         }
         
+        // Restore original transform
+        g2d.setTransform(originalTransform);
+        
+        // Draw zoom information
+        drawZoomInfo(g2d);
+        
         // If no shapes, show message
         if (shapes.isEmpty()) {
             g2d.setColor(Color.GRAY);
             g2d.drawString("No shapes created. Use commands or buttons to create shapes.", 50, 300);
+        }
+    }
+    
+    private void drawZoomInfo(Graphics2D g2d) {
+        g2d.setColor(Color.DARK_GRAY);
+        g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+        String zoomText = String.format("Zoom: %.0f%%", zoomFactor * 100);
+        g2d.drawString(zoomText, 10, 20);
+        
+        // Draw instructions
+        if (zoomFactor != 1.0) {
+            g2d.drawString("Press 'Reset Zoom' to return to 100%", 10, 40);
         }
     }
     
@@ -83,6 +216,7 @@ public class DrawingPanel extends JPanel {
         }
     }
     
+    // ... keep all your existing drawShape methods (drawRectangle, drawCircle, etc.) unchanged ...
     private void drawRectangle(Graphics2D g2d, Shape shape, double x, double y, double w, double h) {
         g2d.drawRect((int)x, (int)y, (int)w, (int)h);
         

@@ -3,6 +3,7 @@ package hk.edu.polyu.comp.comp2021.clevis.view;
 import hk.edu.polyu.comp.comp2021.clevis.controller.Clevis;
 import hk.edu.polyu.comp.comp2021.clevis.model.ShapeManager;
 import hk.edu.polyu.comp.comp2021.clevis.model.Shape;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -16,18 +17,15 @@ public class ClevisGUI {
     private JList<String> shapeList;
     private Clevis.CommandParser parser;
     private ShapeManager shapeManager;
+    private JLabel zoomLabel;
     
     public ClevisGUI(ShapeManager shapeManager, Clevis.CommandParser parser) {
-        System.out.println("DEBUG: ClevisGUI constructor started");
         this.shapeManager = shapeManager;
         this.parser = parser;
         initializeGUI();
-        System.out.println("DEBUG: ClevisGUI constructor completed");
     }
     
     private void initializeGUI() {
-        System.out.println("DEBUG: Initializing GUI components...");
-        
         mainFrame = new JFrame("Clevis Drawing Tool - GUI");
         mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mainFrame.setLayout(new BorderLayout());
@@ -38,18 +36,9 @@ public class ClevisGUI {
         createCommandPanel();
         
         mainFrame.pack();
-        mainFrame.setSize(800, 600); // Smaller for testing
-        mainFrame.setLocationRelativeTo(null); // Center on screen
-        
-        // Force the frame to be visible and focused
+        mainFrame.setSize(1200, 800);
+        mainFrame.setLocationRelativeTo(null);
         mainFrame.setVisible(true);
-        mainFrame.toFront();
-        mainFrame.requestFocus();
-        
-        System.out.println("DEBUG: GUI initialization complete");
-        System.out.println("DEBUG: Frame visible: " + mainFrame.isVisible());
-        System.out.println("DEBUG: Frame showing: " + mainFrame.isShowing());
-        System.out.println("DEBUG: Frame title: " + mainFrame.getTitle());
         
         // Initial status message
         commandHistory.append("Clevis GUI Started\n");
@@ -85,6 +74,29 @@ public class ClevisGUI {
             executeCommand(command);
         });
         
+        // Zoom buttons
+        JButton zoomInBtn = new JButton("Zoom In");
+        zoomInBtn.addActionListener((ActionEvent e) -> {
+            drawingPanel.zoomIn();
+            updateZoomLabel();
+        });
+        
+        JButton zoomOutBtn = new JButton("Zoom Out");
+        zoomOutBtn.addActionListener((ActionEvent e) -> {
+            drawingPanel.zoomOut();
+            updateZoomLabel();
+        });
+        
+        JButton resetZoomBtn = new JButton("Reset Zoom");
+        resetZoomBtn.addActionListener((ActionEvent e) -> {
+            drawingPanel.resetZoom();
+            updateZoomLabel();
+        });
+        
+        // Zoom label
+        zoomLabel = new JLabel("100%");
+        zoomLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+        
         // Action buttons
         JButton listAllBtn = new JButton("List All");
         listAllBtn.addActionListener(e -> executeCommand("listAll"));
@@ -92,10 +104,16 @@ public class ClevisGUI {
         JButton helpBtn = new JButton("Help");
         helpBtn.addActionListener(e -> executeCommand("help"));
         
+        // Add components to toolbar
         toolBar.add(rectBtn);
         toolBar.add(circleBtn);
         toolBar.add(lineBtn);
         toolBar.add(squareBtn);
+        toolBar.addSeparator();
+        toolBar.add(zoomInBtn);
+        toolBar.add(zoomOutBtn);
+        toolBar.add(resetZoomBtn);
+        toolBar.add(zoomLabel);
         toolBar.addSeparator();
         toolBar.add(listAllBtn);
         toolBar.add(helpBtn);
@@ -103,10 +121,29 @@ public class ClevisGUI {
         mainFrame.add(toolBar, BorderLayout.NORTH);
     }
     
+    private void updateZoomLabel() {
+        int zoomPercentage = (int) (drawingPanel.getZoomFactor() * 100);
+        zoomLabel.setText(zoomPercentage + "%");
+    }
+    
     private void createDrawingPanel() {
         drawingPanel = new DrawingPanel(shapeManager);
         JScrollPane scrollPane = new JScrollPane(drawingPanel);
         scrollPane.setPreferredSize(new Dimension(800, 600));
+        
+        // Add mouse wheel listener to scroll pane for zoom
+        scrollPane.addMouseWheelListener(e -> {
+            if (e.isControlDown()) {
+                if (e.getWheelRotation() < 0) {
+                    drawingPanel.zoomIn();
+                } else {
+                    drawingPanel.zoomOut();
+                }
+                updateZoomLabel();
+                e.consume();
+            }
+        });
+        
         mainFrame.add(scrollPane, BorderLayout.CENTER);
     }
     
@@ -121,7 +158,7 @@ public class ClevisGUI {
         JScrollPane listScroll = new JScrollPane(shapeList);
         
         // Control buttons
-        JPanel controlPanel = new JPanel(new GridLayout(3, 1, 5, 5));
+        JPanel controlPanel = new JPanel(new GridLayout(4, 1, 5, 5));
         
         JButton refreshBtn = new JButton("Refresh View");
         refreshBtn.addActionListener(e -> {
@@ -147,9 +184,16 @@ public class ClevisGUI {
             }
         });
         
+        JButton fitToScreenBtn = new JButton("Fit to Screen");
+        fitToScreenBtn.addActionListener(e -> {
+            drawingPanel.fitToScreen();
+            updateZoomLabel();
+        });
+        
         controlPanel.add(refreshBtn);
         controlPanel.add(deleteBtn);
         controlPanel.add(boundingBoxBtn);
+        controlPanel.add(fitToScreenBtn);
         
         sidePanel.add(listScroll, BorderLayout.CENTER);
         sidePanel.add(controlPanel, BorderLayout.SOUTH);
