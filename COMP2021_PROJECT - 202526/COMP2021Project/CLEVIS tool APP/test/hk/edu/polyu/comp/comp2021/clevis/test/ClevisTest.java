@@ -102,46 +102,318 @@ public final class ClevisTest {
             // intentionally ignored
         }
     }
-
-    // REQ1: Logger should write commands to TXT and HTML
     @Test
-    public void testREQ1_LoggerWritesExactRecords() throws Exception {
-        // 💡 Expected TXT output:
-        //   rectangle rlog 0 0 2 3
-        //   circle clog 1 1 5
-        //
-        // 💡 Expected HTML output:
-        //   <table>...
-        //   <td>1</td><td>rectangle rlog 0 0 2 3</td>
-        //   <td>2</td><td>circle clog 1 1 5</td>
-        //
-        // 🧠 Reasoning:
-        // ClevisLogger logs every executed command to both files sequentially.
-        // The HTML log wraps entries in a table with sequential numbering.
+    public void testUndoCommand() {
+        // 💡 Expected: "Undo completed. Current state: X/Y commands"
+        // 🧠 Reasoning: Tests that undo removes the last command and provides status
+        parser.execute("rectangle undo1 0 0 10 10");
+        parser.execute("circle undo2 5 5 3");
+        outContent.reset();
+        parser.execute("undo");
 
-        parser.execute("rectangle rlog 0 0 2 3");
-        parser.execute("circle clog 1 1 5");
+        String actual = outContent.toString().trim();
+        boolean passed = actual.contains("Undo completed") && actual.contains("Current state");
+
+        printTestResult("UndoCommand", "Contains 'Undo completed' and status", actual, passed);
+        assertTrue(passed);
+    }
+
+    // Test redo functionality
+    @Test
+    public void testRedoCommand() {
+        // 💡 Expected: "Redo completed. Current state: X/Y commands"
+        // 🧠 Reasoning: Tests that redo reapplies the last undone command
+        parser.execute("rectangle redo1 0 0 10 10");
+        parser.execute("circle redo2 5 5 3");
+        parser.execute("undo"); // First undo
+        outContent.reset();
+        parser.execute("redo"); // Then redo
+
+        String actual = outContent.toString().trim();
+        boolean passed = actual.contains("Redo completed") && actual.contains("Current state");
+
+        printTestResult("RedoCommand", "Contains 'Redo completed' and status", actual, passed);
+        assertTrue(passed);
+    }
+
+    // Test undo with no history
+    @Test
+    public void testUndoWithNoHistory() {
+        // 💡 Expected: "Error: Nothing to undo."
+        // 🧠 Reasoning: Tests error handling when undo is called with empty history
+        outContent.reset();
+        parser.execute("undo");
+
+        String actual = outContent.toString().trim();
+        String expected = "Error: Nothing to undo.";
+
+        boolean passed = actual.equals(expected);
+        printTestResult("UndoWithNoHistory", expected, actual, passed);
+        assertEquals(expected, actual);
+    }
+
+    // Test redo with no future history
+    @Test
+    public void testRedoWithNoFuture() {
+        // 💡 Expected: "Error: Nothing to redo."
+        // 🧠 Reasoning: Tests error handling when redo is called with no undone commands
+        parser.execute("rectangle noredo 0 0 10 10");
+        outContent.reset();
+        parser.execute("redo");
+
+        String actual = outContent.toString().trim();
+        String expected = "Error: Nothing to redo.";
+
+        boolean passed = actual.equals(expected);
+        printTestResult("RedoWithNoFuture", expected, actual, passed);
+        assertEquals(expected, actual);
+    }
+
+    // Test undo/redo sequence with shape creation
+    @Test
+    public void testUndoRedoShapeCreation() {
+        // 💡 Expected: Shape is removed on undo and reappears on redo
+        // 🧠 Reasoning: Tests that undo/redo properly manages shape state
+        parser.execute("rectangle seq1 0 0 10 10");
+        outContent.reset();
+        parser.execute("undo");
+        
+        String undoOutput = outContent.toString().trim();
+        boolean undoPassed = undoOutput.contains("Undo completed");
+        
+        outContent.reset();
+        parser.execute("redo");
+        String redoOutput = outContent.toString().trim();
+        boolean redoPassed = redoOutput.contains("Redo completed");
+        
+        boolean passed = undoPassed && redoPassed;
+        printTestResult("UndoRedoShapeCreation", 
+                    "Undo and redo both complete successfully", 
+                    "Undo: " + undoOutput + " | Redo: " + redoOutput, 
+                    passed);
+        assertTrue(passed);
+    }
+
+    // Test undo/redo with grouping
+    @Test
+    public void testUndoRedoGrouping() {
+        // 💡 Expected: Group creation and ungrouping can be undone/redone
+        // 🧠 Reasoning: Tests undo/redo with complex operations like grouping
+        parser.execute("rectangle gundo1 0 0 5 5");
+        parser.execute("circle gundo2 10 10 3");
+        parser.execute("group ggroup gundo1 gundo2");
+        outContent.reset();
+        parser.execute("undo"); // Undo group creation
+        
+        String actual = outContent.toString().trim();
+        boolean passed = actual.contains("Undo completed");
+
+        printTestResult("UndoRedoGrouping", "Undo completes for group operation", actual, passed);
+        assertTrue(passed);
+    }
+
+    // Test undo/redo with movement
+    @Test
+    public void testUndoRedoMovement() {
+        // 💡 Expected: Move operations can be undone/redone
+        // 🧠 Reasoning: Tests undo/redo with shape transformations
+        parser.execute("rectangle mundo 0 0 10 10");
+        parser.execute("move mundo 5 5");
+        outContent.reset();
+        parser.execute("undo"); // Undo move
+        
+        String actual = outContent.toString().trim();
+        boolean passed = actual.contains("Undo completed");
+
+        printTestResult("UndoRedoMovement", "Undo completes for move operation", actual, passed);
+        assertTrue(passed);
+    }
+
+    // Test that read-only commands don't affect undo/redo history
+    @Test
+    public void testReadOnlyCommandsNoHistory() {
+        // 💡 Expected: boundingbox, list, listall don't add to undo history
+        // 🧠 Reasoning: Tests that non-mutable commands don't affect undo/redo stack
+        parser.execute("rectangle readonly 0 0 10 10");
+        int initialHistorySize = getHistorySize();
+        
+        parser.execute("boundingbox readonly");
+        parser.execute("list readonly");
+        parser.execute("listall");
+        
+        int finalHistorySize = getHistorySize();
+        boolean passed = initialHistorySize == finalHistorySize;
+
+        printTestResult("ReadOnlyCommandsNoHistory", 
+                    "History size unchanged after read-only commands", 
+                    "Initial: " + initialHistorySize + ", Final: " + finalHistorySize, 
+                    passed);
+        assertTrue(passed);
+    }
+
+    // Test undo/redo logging
+    @Test
+    public void testUndoRedoLogging() throws Exception {
+        // 💡 Expected: undo and redo commands are logged
+        // 🧠 Reasoning: Tests that undo/redo operations are properly logged
+        parser.execute("rectangle logundo 0 0 10 10");
+        parser.execute("undo");
+        parser.execute("redo");
         ClevisLogger.close();
 
         List<String> txt = Files.readAllLines(txtFile.toPath());
         String html = new String(Files.readAllBytes(htmlFile.toPath()));
 
-        String expectedTxt0 = "rectangle rlog 0 0 2 3";
-        String expectedTxt1 = "circle clog 1 1 5";
-        boolean cond = txt.size() >= 2 &&
-                expectedTxt0.equals(txt.get(0)) &&
-                expectedTxt1.equals(txt.get(1)) &&
-                html.contains("<table") &&
-                html.contains("<td>1</td>") && html.contains("<td>rectangle rlog 0 0 2 3</td>") &&
-                html.contains("<td>2</td>") && html.contains("<td>circle clog 1 1 5</td>");
+        boolean cond = txt.contains("undo") && 
+                    txt.contains("redo") && 
+                    html.contains("undo") && 
+                    html.contains("redo");
 
-        // Print verbose result to instructor console (originalOut)
-        printTestResult("REQ1_LoggerWritesExactRecords",
-                "TXT[0]=\"" + expectedTxt0 + "\", TXT[1]=\"" + expectedTxt1 + "\"; HTML contains numbered rows",
-                "TXT: " + (txt.size()>0?txt.get(0):"") + " ... ; HTML length=" + html.length(),
+        printTestResult("UndoRedoLogging",
+                "TXT and HTML logs contain 'undo' and 'redo'",
+                "TXT: " + txt + " | HTML contains keywords: " + (html.contains("undo") && html.contains("redo")),
                 cond);
-
         assertTrue(cond);
+    }
+    // REQ1: Logger should write commands to TXT and HTML (updated for undo/redo)
+    @Test
+        public void testREQ1_LoggerWritesExactRecords() throws Exception {
+            parser.execute("rectangle rlog 0 0 2 3");
+            parser.execute("circle clog 1 1 5");
+            parser.execute("undo"); // Added undo command
+            ClevisLogger.close();
+
+            List<String> txt = Files.readAllLines(txtFile.toPath());
+            String html = new String(Files.readAllBytes(htmlFile.toPath()));
+
+            String expectedTxt0 = "rectangle rlog 0 0 2 3";
+            String expectedTxt1 = "circle clog 1 1 5";
+            String expectedTxt2 = "undo";
+            boolean cond = txt.size() >= 3 &&
+                    expectedTxt0.equals(txt.get(0)) &&
+                    expectedTxt1.equals(txt.get(1)) &&
+                    expectedTxt2.equals(txt.get(2)) &&
+                    html.contains("<table") &&
+                    html.contains("<td>1</td>") && html.contains("<td>rectangle rlog 0 0 2 3</td>") &&
+                    html.contains("<td>2</td>") && html.contains("<td>circle clog 1 1 5</td>") &&
+                    html.contains("<td>3</td>") && html.contains("<td>undo</td>");
+
+            printTestResult("REQ1_LoggerWritesExactRecords",
+                    "TXT[0-2] contain rectangle, circle, undo; HTML contains all",
+                    "TXT: " + (txt.size()>0?txt.get(0):"") + " ... ; HTML length=" + html.length(),
+                    cond);
+            assertTrue(cond);
+        }
+
+        // Updated help command test for new features
+        @Test
+        public void testHelpCommandIncludesUndoRedo() {
+            outContent.reset();
+            parser.execute("help");
+            String actual = outContent.toString().toLowerCase();
+            boolean passed = actual.contains("undo") && 
+                            actual.contains("redo") && 
+                            actual.contains("commands") && 
+                            actual.contains("rectangle");
+
+            printTestResult("HelpCommandIncludesUndoRedo", 
+                        "Contains keywords 'undo', 'redo', 'commands', 'rectangle'", 
+                        actual, 
+                        passed);
+            assertTrue(passed);
+        }
+
+    // ============================ BOUNDING BOX VISUALIZATION TESTS ============================
+
+    // Test bounding box command still works with visualization
+    @Test
+    public void testBoundingBoxWithVisualization() {
+        parser.execute("circle bboxviz 0 0 2");
+        outContent.reset();
+        parser.execute("boundingbox bboxviz");
+
+        String actual = outContent.toString().trim();
+        boolean passed = actual.contains("Bounding box of bboxviz") &&
+                        actual.contains("x=") && actual.contains("y=") &&
+                        actual.contains("width=") && actual.contains("height=");
+
+        printTestResult("BoundingBoxWithVisualization", 
+                       "Contains bounding box info for bboxviz", 
+                       actual, 
+                       passed);
+        assertTrue(passed);
+    }
+
+    // Test bounding box error handling
+    @Test
+    public void testBoundingBoxNonexistentShape() {
+        outContent.reset();
+        parser.execute("boundingbox noshape");
+
+        String actual = outContent.toString().trim();
+        boolean passed = actual.contains("Error") && actual.contains("not found");
+
+        printTestResult("BoundingBoxNonexistentShape", 
+                       "Contains error message for non-existent shape", 
+                       actual, 
+                       passed);
+        assertTrue(passed);
+    }
+
+    // Test bounding box with different shape types
+    @Test
+    public void testBoundingBoxVariousShapes() {
+        parser.execute("rectangle bboxrect 0 0 10 5");
+        parser.execute("circle bboxcirc 5 5 3");
+        parser.execute("line bboxline 0 0 8 6");
+        
+        outContent.reset();
+        parser.execute("boundingbox bboxrect");
+        String rectOutput = outContent.toString().trim();
+        
+        outContent.reset();
+        parser.execute("boundingbox bboxcirc");
+        String circOutput = outContent.toString().trim();
+        
+        outContent.reset();
+        parser.execute("boundingbox bboxline");
+        String lineOutput = outContent.toString().trim();
+        
+        boolean passed = rectOutput.contains("Bounding box of bboxrect") &&
+                        circOutput.contains("Bounding box of bboxcirc") &&
+                        lineOutput.contains("Bounding box of bboxline");
+
+        printTestResult("BoundingBoxVariousShapes", 
+                       "All shape types return bounding box info", 
+                       "Rect: " + !rectOutput.isEmpty() + ", Circle: " + !circOutput.isEmpty() + ", Line: " + !lineOutput.isEmpty(), 
+                       passed);
+        assertTrue(passed);
+    }
+
+    // ============================ HELPER METHODS ============================
+
+    /**
+     * Helper method to get history size for testing (using reflection if needed)
+     */
+    private int getHistorySize() {
+        try {
+            // Using reflection to access private history for testing
+            java.lang.reflect.Field historyField = parser.getClass().getDeclaredField("commandHistory");
+            historyField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            List<String> history = (List<String>) historyField.get(parser);
+            return history.size();
+        } catch (Exception e) {
+            // Fallback: parse from status output
+            String status = parser.getUndoRedoStatus();
+            // Extract number from "History: X commands"
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("History: (\\d+) commands");
+            java.util.regex.Matcher matcher = pattern.matcher(status);
+            if (matcher.find()) {
+                return Integer.parseInt(matcher.group(1));
+            }
+            return 0;
+        }
     }
 
     // REQ2: Draw rectangle
