@@ -419,74 +419,51 @@ public final class ClevisTest {
     // REQ2: Draw rectangle
     @Test
     public void testREQ2_CreateRectangle() {
-        // 💡 Expected console output:
-        //   "Created a rectangle named r1 at (0.00,0.00) w=10.00 h=5.00"
-        // 🧠 Reasoning:
-        // CommandParser calls ShapeManager to add a rectangle and prints confirmation.
-
         parser.execute("rectangle r1 0 0 10 5");
         String actual = outContent.toString().trim();
-        String expected = "Created a Rectangle named r1 at (0.00,0.00) w=10.00 h=5.00";
+        String expected = "Created a Rectangle named r1 at (0.00,0.00) w=10.00 h=5.00\nHistory: 1/1 commands";
 
-        boolean passed = expected.equals(actual);
+        boolean passed = actual.equals(expected);
         printTestResult("REQ2_CreateRectangle", expected, actual, passed);
-
         assertEquals(expected, actual);
     }
 
     // REQ3: Draw line
     @Test
     public void testREQ3_CreateLine() {
-        // 💡 Expected:
-        //   "Created line l1 from (0.00,0.00) to (3.00,4.00)"
-        // 🧠 Reasoning:
-        // Confirms the line creation command triggers a proper formatted printout.
-
         parser.execute("line l1 0 0 3 4");
         String actual = outContent.toString().trim();
-        String expected = "Created line l1 from (0.00,0.00) to (3.00,4.00)";
+        String expected = "Created line l1 from (0.00,0.00) to (3.00,4.00)\nHistory: 1/1 commands";
 
-        boolean passed = expected.equals(actual);
+        boolean passed = actual.equals(expected);
         printTestResult("REQ3_CreateLine", expected, actual, passed);
-
         assertEquals(expected, actual);
     }
 
     // REQ4: Draw circle
     @Test
     public void testREQ4_CreateCircle() {
-        // 💡 Expected:
-        //   "Created circle c1 center=(5.00,5.00) r=2.00"
-        // 🧠 Reasoning:
-        // Tests shape creation and correct floating-point output.
-
         parser.execute("circle c1 5 5 2");
         String actual = outContent.toString().trim();
-        String expected = "Created circle c1 center=(5.00,5.00) r=2.00";
+        String expected = "Created circle c1 center=(5.00,5.00) r=2.00\nHistory: 1/1 commands";
 
-        boolean passed = expected.equals(actual);
+        boolean passed = actual.equals(expected);
         printTestResult("REQ4_CreateCircle", expected, actual, passed);
-
         assertEquals(expected, actual);
     }
 
     // REQ5: Draw square
     @Test
     public void testREQ5_CreateSquare() {
-        // 💡 Expected:
-        //   "Created square s1 at (2.00,2.00) side=4.00"
-        // 🧠 Reasoning:
-        // Ensures the square command correctly interprets parameters and prints confirmation.
-
         parser.execute("square s1 2 2 4");
         String actual = outContent.toString().trim();
-        String expected = "Created square s1 at (2.00,2.00) side=4.00";
+        String expected = "Created square s1 at (2.00,2.00) side=4.00\nHistory: 1/1 commands";
 
-        boolean passed = expected.equals(actual);
+        boolean passed = actual.equals(expected);
         printTestResult("REQ5_CreateSquare", expected, actual, passed);
-
         assertEquals(expected, actual);
     }
+
 
     // REQ6: Group shapes
     @Test
@@ -615,20 +592,15 @@ public final class ClevisTest {
     // REQ8: Delete shape
     @Test
     public void testREQ8_DeleteShape() {
-        // 💡 Expected:
-        //   "Deleted shape del1"
-        // 🧠 Reasoning:
-        // Ensures the delete command removes a shape and prints confirmation.
-        parser.execute("rectangle del1 0 0 4 4");
+        parser.execute("rectangle del1 0 0 4 4"); // This adds to history: 1/1
         outContent.reset();
-        parser.execute("delete del1");
+        parser.execute("delete del1"); // This adds to history: 2/2
 
         String actual = outContent.toString().trim();
-        String expected = "Deleted shape del1";
+        String expected = "Deleted shape del1\nHistory: 2/2 commands";
 
         boolean passed = actual.equals(expected);
         printTestResult("REQ8_DeleteShape", expected, actual, passed);
-
         assertEquals(expected, actual);
     }
 
@@ -657,20 +629,15 @@ public final class ClevisTest {
     // REQ10: Move shape
     @Test
     public void testREQ10_MoveShape() {
-        // 💡 Expected:
-        //   "Moved move1 by (3.00,4.00)"
-        // 🧠 Reasoning:
-        // Ensures translation offsets are applied correctly to shape coordinates.
-        parser.execute("rectangle move1 0 0 2 2");
+        parser.execute("rectangle move1 0 0 2 2"); // This adds to history: 1/1
         outContent.reset();
-        parser.execute("move move1 3 4");
+        parser.execute("move move1 3 4"); // This adds to history: 2/2
 
         String actual = outContent.toString().trim();
-        String expected = "Moved move1 by (3.00,4.00)";
+        String expected = "Moved move1 by (3.00,4.00)\nHistory: 2/2 commands";
 
         boolean passed = actual.equals(expected);
         printTestResult("REQ10_MoveShape", expected, actual, passed);
-
         assertEquals(expected, actual);
     }
 
