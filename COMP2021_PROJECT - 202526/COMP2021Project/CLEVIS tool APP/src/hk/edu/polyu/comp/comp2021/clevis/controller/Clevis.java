@@ -48,33 +48,69 @@ public class Clevis {
     }
 
     /**
-     * Run interactive CLI.
-     * The program terminates only when 'quit' is entered.
-     */
+ * Run interactive CLI.
+ * The program terminates only when 'quit' is entered.
+ */
     public void run() {
-        try (Scanner in = new Scanner(System.in)) {
+        Scanner in = new Scanner(System.in);
+        
+        try {
             view.showWelcomeMessage();
+            
+            // Add clear messaging for GUI mode
+            System.out.println("\n=== TERMINAL INPUT ACTIVE ===");
+            System.out.println("Type commands below (GUI will update automatically)");
+            System.out.println("Type 'quit' to exit terminal mode");
+            System.out.println("================================\n");
 
             while (true) {
+                // Show prompt and ensure it's visible
                 view.showPrompt();
-                final String line;
-
-                try {
+                System.out.flush(); // Force the prompt to display
+                
+                String line = null;
+                
+                // Check if there's input available
+                if (in.hasNextLine()) {
                     line = in.nextLine();
-                } catch (NoSuchElementException | IllegalStateException e) {
-                    break;
+                } else {
+                    // No input available, small delay to prevent busy waiting
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                    continue;
                 }
 
                 if (line == null) {
+                    continue;
+                }
+                
+                String trimmed = line.trim();
+                
+                // Check for quit command
+                if ("quit".equalsIgnoreCase(trimmed)) {
                     break;
                 }
+                
+                // Skip empty lines
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
 
-                parser.execute(line);
+                // Execute the command
+                parser.execute(trimmed);
             }
 
             view.showTerminationMessage();
+            
+        } catch (Exception e) {
+            System.err.println("Unexpected error in CLI: " + e.getMessage());
+            e.printStackTrace();
         } finally {
-            // Ensure logger is properly closed
+            // Ensure resources are closed
+            in.close();
             ClevisLogger.close();
         }
     }
@@ -735,30 +771,59 @@ public static class CommandParser {
         /**
          * [REQ16] Help command
          */
+
+/**
+ * [REQ16] Help command with updated undo/redo and bounding box info
+ */
         private void showHelp() {
             System.out.println("""
             ========================= CLEVIS HELP =========================
             Clevis is a command-line drawing and shape manipulation tool.
 
-            Available commands:
-              "rectangle n x y w h": Create a rectangle named n with top-left corner (x, y), width w, and height h.
-              "line n x1 y1 x2 y2": Create a line segment named n from (x1, y1) to (x2, y2).
-              circle n x y r: Create a circle named n with center (x, y) and radius r.
-              "square n x y l": Create a square named n with top-left corner (x, y) and side length l.
-              "group n n1 n2 ...": Group shapes n1, n2, ... into one shape named n.
-              "ungroup n": Ungroup the group shape named n back into its members.
-              "delete n": Delete a shape (or group) named n.
-              "move n dx dy": Move shape n by dx horizontally and dy vertically.
-              "boundingbox n": Display the minimum bounding box of shape n.
-              "shapeAt x y": Find the topmost shape covering point (x, y).
-              "intersect n1 n2": Check if two shapes (n1, n2) intersect.
-              "list n": Show detailed info about a single shape.
-              "listAll": List all shapes in Clevis (bottom to top).
-              "help": Show this help guide.
-              "quit": Exit Clevis and save logs.
-            =================================================================
+            SHAPE CREATION COMMANDS:
+            "rectangle n x y w h": Create a rectangle named n with top-left corner (x, y), width w, and height h.
+            "line n x1 y1 x2 y2": Create a line segment named n from (x1, y1) to (x2, y2).
+            "circle n x y r": Create a circle named n with center (x, y) and radius r.
+            "square n x y l": Create a square named n with top-left corner (x, y) and side length l.
+
+            GROUPING AND MODIFICATION COMMANDS:
+            "group n n1 n2 ...": Group shapes n1, n2, ... into one shape named n.
+            "ungroup n": Ungroup the group shape named n back into its members.
+            "delete n": Delete a shape (or group) named n.
+            "move n dx dy": Move shape n by dx horizontally and dy vertically.
+
+            UNDO/REDO COMMANDS (Current Session Only):
+            "undo": Undo the last command (supports: rectangle, line, circle, square, group, ungroup, delete, move).
+            "redo": Redo the last undone command.
+
+            VISUALIZATION COMMANDS:
+            "boundingbox n": Display the minimum bounding box of shape n (also shows visual highlight in GUI).
+            "shapeAt x y": Find the topmost shape covering point (x, y).
+            "intersect n1 n2": Check if two shapes (n1, n2) intersect.
+
+            INFORMATION COMMANDS:
+            "list n": Show detailed info about a single shape.
+            "listAll": List all shapes in Clevis (bottom to top).
+
+            GUI-SPECIFIC FEATURES:
+            - Bounding box visualizations appear when using 'boundingbox' command
+            - Click 'Refresh View' to clear bounding box highlights
+            - Undo/redo history is maintained for the current session only
+            - GUI updates automatically when commands are executed from terminal
+
+            SYSTEM COMMANDS:
+            "help": Show this help guide.
+            "quit": Exit Clevis and save logs.
+
+            NOTES:
+            - Undo/redo works for shape creation, modification, grouping, and deletion
+            - Bounding box, intersect, list, and listAll commands cannot be undone/redone
+            - Use 'Refresh View' button in GUI to clear bounding box visualizations
+            - Shape names must be unique
+            - All coordinates and dimensions are floating-point numbers
+
+            ================================================================
             """);
-            // No additional logging needed - help command is already logged
         }
     }
         

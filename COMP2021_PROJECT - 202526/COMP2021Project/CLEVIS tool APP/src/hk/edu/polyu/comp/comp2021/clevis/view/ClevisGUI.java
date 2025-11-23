@@ -18,6 +18,8 @@ public class ClevisGUI {
     private Clevis.CommandParser parser;
     private ShapeManager shapeManager;
     private JLabel zoomLabel;
+    private JButton undoBtn;
+    private JButton redoBtn;
     
     public ClevisGUI(ShapeManager shapeManager, Clevis.CommandParser parser) {
         this.shapeManager = shapeManager;
@@ -45,7 +47,7 @@ public class ClevisGUI {
         commandHistory.append("Use buttons or type commands to create shapes\n\n");
     }
     
-    private void createToolbar() {
+        private void createToolbar() {
         JToolBar toolBar = new JToolBar();
         toolBar.setFloatable(false);
         
@@ -72,6 +74,21 @@ public class ClevisGUI {
         squareBtn.addActionListener((ActionEvent e) -> {
             String command = "square sq_" + System.currentTimeMillis() + " 100 100 80";
             executeCommand(command);
+        });
+        
+        // ADD UNDO/REDO BUTTONS HERE
+        JButton undoBtn = new JButton("Undo");
+        undoBtn.setToolTipText("Undo the last command");
+        undoBtn.addActionListener(e -> {
+            executeCommand("undo");
+            updateUndoRedoButtons(); // Update button states
+        });
+        
+        JButton redoBtn = new JButton("Redo");
+        redoBtn.setToolTipText("Redo the last undone command");
+        redoBtn.addActionListener(e -> {
+            executeCommand("redo");
+            updateUndoRedoButtons(); // Update button states
         });
         
         // Zoom buttons
@@ -110,6 +127,9 @@ public class ClevisGUI {
         toolBar.add(lineBtn);
         toolBar.add(squareBtn);
         toolBar.addSeparator();
+        toolBar.add(undoBtn);    // Add undo button
+        toolBar.add(redoBtn);    // Add redo button
+        toolBar.addSeparator();
         toolBar.add(zoomInBtn);
         toolBar.add(zoomOutBtn);
         toolBar.add(resetZoomBtn);
@@ -119,6 +139,13 @@ public class ClevisGUI {
         toolBar.add(helpBtn);
         
         mainFrame.add(toolBar, BorderLayout.NORTH);
+        
+        // Store button references for updating states
+        this.undoBtn = undoBtn;
+        this.redoBtn = redoBtn;
+        
+        // Initial button state update
+        updateUndoRedoButtons();
     }
     
     private void updateZoomLabel() {
@@ -242,20 +269,45 @@ public class ClevisGUI {
     }
     
     private void executeCommand(String command) {
-        commandHistory.append("> " + command + "\n");
-        parser.execute(command);
-        drawingPanel.repaint();
-        updateShapeList();
-        commandHistory.setCaretPosition(commandHistory.getDocument().getLength());
-
-        if (command.trim().toLowerCase().startsWith("boundingbox ")) {
+    // Show the command that was executed
+    commandHistory.append("> " + command + "\n");
+    
+    // Execute the command - outputs will now appear via the callback
+    parser.execute(command);
+    
+    // Handle bounding box visualization
+    if (command.trim().toLowerCase().startsWith("boundingbox ")) {
         String[] tokens = command.trim().split("\\s+");
         if (tokens.length >= 2) {
             String shapeName = tokens[1];
             drawingPanel.showBoundingBoxForShape(shapeName);
         }
     }
+    
+    drawingPanel.repaint();
+    updateShapeList();
+    commandHistory.setCaretPosition(commandHistory.getDocument().getLength());
+    
+    // UPDATE UNDO/REDO BUTTON STATES AFTER EVERY COMMAND
+    updateUndoRedoButtons();
+}
+
+    private void updateUndoRedoButtons() {
+    if (undoBtn != null && redoBtn != null) {
+        String status = parser.getUndoRedoStatus();
+        
+        // Parse the status string to determine button states
+        boolean canUndo = status.contains("Undo: Yes");
+        boolean canRedo = status.contains("Redo: Yes");
+        
+        undoBtn.setEnabled(canUndo);
+        redoBtn.setEnabled(canRedo);
+        
+        // Update tooltips with more information
+        undoBtn.setToolTipText(canUndo ? "Undo the last command" : "Nothing to undo");
+        redoBtn.setToolTipText(canRedo ? "Redo the last undone command" : "Nothing to redo");
     }
+}
     
     private void updateShapeList() {
         try {
