@@ -9,7 +9,7 @@ import java.util.Locale;
  */
 public final class Rectangle implements Shape {
 
-    private final String name;
+    private String name;
     private double x;
     private double y;
     private final double width;
@@ -72,5 +72,13 @@ public final class Rectangle implements Shape {
     @Override
     public boolean coversPoint(final double px, final double py) {
         return px >= x && px <= x + width && py >= y && py <= y + height;
+    }
+    
+    @Override
+    public void changeName(String newName) {
+        if (newName == null || newName.isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or empty");
+        }
+        this.name = newName;
     }
 }

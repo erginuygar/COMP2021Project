@@ -82,4 +82,24 @@ public final class ShapeManager {
         }
         return shape.getBoundingBox();
     }
+
+        /**
+     * Changes the name of a shape while maintaining its reference in the manager.
+     *
+     * @param oldName the current name of the shape
+     * @param newName the new name for the shape
+     * @throws ClevisException if oldName doesn't exist or newName already exists
+     */
+    public void changeShapeName(String oldName, String newName) throws ClevisException {
+        if (!shapesByName.containsKey(oldName)) {
+            throw new ClevisException("Shape not found: " + oldName);
+        }
+        if (shapesByName.containsKey(newName)) {
+            throw new ClevisException("Shape name already exists: " + newName);
+        }
+        
+        Shape shape = shapesByName.remove(oldName);
+        shape.changeName(newName);
+        shapesByName.put(newName, shape);
+    }
 }

@@ -9,7 +9,7 @@ import java.util.Locale;
  */
 public final class Line implements Shape {
 
-    private final String name;
+    private String name;
     private double x1;
     private double y1;
     private double x2;
@@ -83,5 +83,13 @@ public final class Line implements Shape {
         final double minY = Math.min(y1, y2);
         final double maxY = Math.max(y1, y2);
         return px >= minX && px <= maxX && py >= minY && py <= maxY;
+    }
+
+    @Override
+    public void changeName(String newName) {
+        if (newName == null || newName.isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or empty");
+        }
+        this.name = newName;
     }
 }

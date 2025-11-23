@@ -9,7 +9,7 @@ import java.util.Locale;
  */
 public final class Circle implements Shape {
 
-    private final String name;
+    private String name;
     private double x;
     private double y;
     private final double radius;
@@ -71,5 +71,13 @@ public final class Circle implements Shape {
         final double dx = px - x;
         final double dy = py - y;
         return (dx * dx + dy * dy) <= radius * radius;
+    }
+
+    @Override
+    public void changeName(String newName) {
+        if (newName == null || newName.isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or empty");
+        }
+        this.name = newName;
     }
 }

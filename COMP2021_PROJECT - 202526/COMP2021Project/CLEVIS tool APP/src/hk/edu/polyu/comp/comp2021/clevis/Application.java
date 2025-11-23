@@ -8,7 +8,7 @@ public class Application {
 
     public static void main(final String[] args) {
         // Simple fixed log directory
-        final String LOG_DIR = "COMP2021Project/CLEVIS tool APP/src/hk/edu/polyu/comp/comp2021/clevis/logs";
+        final String LOG_DIR = "COMP2021_PROJECT - 202526/COMP2021Project/CLEVIS tool APP/src/hk/edu/polyu/comp/comp2021/clevis/logs";
         
         // Fixed log file names in that directory
         String htmlLog = LOG_DIR + "/clevis_log.html";

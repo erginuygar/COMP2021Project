@@ -1,6 +1,7 @@
 package hk.edu.polyu.comp.comp2021.clevis.controller;
 
 import hk.edu.polyu.comp.comp2021.clevis.model.*;
+import hk.edu.polyu.comp.comp2021.clevis.model.ClevisException.DuplicateShapeException;
 import hk.edu.polyu.comp.comp2021.clevis.view.ConsoleView;
 
 import java.util.*;
@@ -81,101 +82,276 @@ public class Clevis {
     /**
      * CommandParser is responsible for interpreting and executing all Clevis commands.
      */
-    public static class CommandParser {
-        private final ShapeManager manager;
-        private boolean testMode = false;
+    
+public static class CommandParser {
+    private final ShapeManager manager;
+    private boolean testMode = false;
+    
+    // Simple command history - only store the command strings
+    private final List<String> commandHistory = new ArrayList<>();
+    private int currentHistoryIndex = -1;
+    private boolean isReplaying = false; // Add this flag
 
-        /**
-         * Constructs a new {@code CommandParser} instance.
-         */
-        public CommandParser(final ShapeManager manager) {
-            this.manager = manager;
+    public CommandParser(final ShapeManager manager) {
+        this.manager = manager;
+    }
+    
+    /**
+     * Execute a single command string with undo/redo support
+     */
+    public void execute(final String command) {
+        if (command == null) {
+            return;
+        }
+
+        final String trimmed = command.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+
+        // Log the command (except undo/redo themselves)
+        if (!trimmed.equals("undo") && !trimmed.equals("redo")) {
+            ClevisLogger.logCommand(trimmed);
+        }
+
+        final String[] tokens = trimmed.split("\\s+");
+        final String op = tokens[0].toLowerCase(Locale.ROOT);
+
+        try {
+            switch (op) {
+                case "rectangle":
+                    createRectangle(tokens);
+                    addToHistory(trimmed);
+                    break;
+                case "line":
+                    createLine(tokens);
+                    addToHistory(trimmed);
+                    break;
+                case "circle":
+                    createCircle(tokens);
+                    addToHistory(trimmed);
+                    break;
+                case "square":
+                    createSquare(tokens);
+                    addToHistory(trimmed);
+                    break;
+                case "group":
+                    groupShapes(tokens);
+                    addToHistory(trimmed);
+                    break;
+                case "ungroup":
+                    ungroupShapes(tokens);
+                    addToHistory(trimmed);
+                    break;
+                case "delete":
+                    deleteShape(tokens);
+                    addToHistory(trimmed);
+                    break;
+                case "move":
+                    moveShape(tokens);
+                    addToHistory(trimmed);
+                    break;
+                case "undo":
+                    undoCommand(tokens);
+                    break;
+                case "redo":
+                    redoCommand(tokens);
+                    break;
+                case "boundingbox":
+                    calculateBoundingBox(tokens);
+                    break;
+                case "shapeat":
+                    findTopmost(tokens);
+                    break;
+                case "intersect":
+                    intersect(tokens);
+                    break;
+                case "list":
+                    listShape(tokens);
+                    break;
+                case "listall":
+                    listAll(tokens);
+                    break;
+                case "quit":
+                    quit();
+                    break;
+                case "help":
+                    showHelp();
+                    break;
+                default:
+                    System.out.println("Unknown command: " + op);
+                    ClevisLogger.logCommand("Error: Unknown command - " + op);
+            }
+        } catch (ClevisException e) {
+            System.out.println("Error: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Error: invalid number format.");
+        } catch (RuntimeException e) {
+            System.out.println("Runtime error: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Add command to history (only mutable commands)
+     */
+    private void addToHistory(String command) {
+        // Remove any future commands if we're in the middle of history
+        if (currentHistoryIndex < commandHistory.size() - 1) {
+            commandHistory.subList(currentHistoryIndex + 1, commandHistory.size()).clear();
+        }
+        commandHistory.add(command);
+        currentHistoryIndex = commandHistory.size() - 1;
+        
+        System.out.println("History: " + (currentHistoryIndex + 1) + "/" + commandHistory.size() + " commands");
+    }
+    
+    /**
+     * Execute undo command by replaying all commands except the last one
+     */
+    private void undoCommand(final String[] tokens) throws ClevisException {
+        if (tokens.length != 1) {
+            throw new ClevisException("Usage: undo");
         }
         
-        /**
-         * Execute a single command string.
-         * Logs every executed command (REQ1).
-         */
-        public void execute(final String command) {
-            if (command == null) {
-                return;
+        if (currentHistoryIndex < 0) {
+            throw new ClevisException("Nothing to undo.");
+        }
+        
+        System.out.println("Undoing last command...");
+        
+        // Move back in history
+        currentHistoryIndex--;
+        
+        // Replay all commands up to the new current position
+        replayHistoryUpToCurrent();
+        
+        ClevisLogger.logCommand("undo");
+        System.out.println("Undo completed. " + getHistoryStatus());
+    }
+    
+    /**
+     * Execute redo command by replaying all commands up to the next one
+     */
+    private void redoCommand(final String[] tokens) throws ClevisException {
+        if (tokens.length != 1) {
+            throw new ClevisException("Usage: redo");
+        }
+        
+        if (currentHistoryIndex >= commandHistory.size() - 1) {
+            throw new ClevisException("Nothing to redo.");
+        }
+        
+        System.out.println("Redoing next command...");
+        
+        // Move forward in history
+        currentHistoryIndex++;
+        
+        // Replay all commands up to the new current position
+        replayHistoryUpToCurrent();
+        
+        ClevisLogger.logCommand("redo");
+        System.out.println("Redo completed. " + getHistoryStatus());
+    }
+    
+    /**
+     * Replay command history from beginning up to currentHistoryIndex
+     */
+    private void replayHistoryUpToCurrent() throws ClevisException {
+        isReplaying = true;
+        try {
+            clearAllShapes();
+            
+            for (int i = 0; i <= currentHistoryIndex; i++) {
+                String command = commandHistory.get(i);
+                executeReplayCommand(command);
             }
+        } finally {
+            isReplaying = false;
+        }
+    }
+    
+    /**
+     * Execute a command during history replay
+     */
+    private void executeReplayCommand(final String command) throws ClevisException {
+        final String trimmed = command.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
 
-            final String trimmed = command.trim();
-            if (trimmed.isEmpty()) {
-                return;
-            }
+        final String[] tokens = trimmed.split("\\s+");
+        final String op = tokens[0].toLowerCase(Locale.ROOT);
 
-            // Log command (REQ1) - this is the main logging call
-            ClevisLogger.logCommand(trimmed);
-
-            final String[] tokens = trimmed.split("\\s+");
-            final String op = tokens[0].toLowerCase(Locale.ROOT);
-
+        switch (op) {
+            case "rectangle":
+                createRectangle(tokens);
+                break;
+            case "line":
+                createLine(tokens);
+                break;
+            case "circle":
+                createCircle(tokens);
+                break;
+            case "square":
+                createSquare(tokens);
+                break;
+            case "group":
+                groupShapes(tokens);
+                break;
+            case "ungroup":
+                ungroupShapes(tokens);
+                break;
+            case "delete":
+                deleteShape(tokens);
+                break;
+            case "move":
+                moveShape(tokens);
+                break;
+            default:
+                // Skip other commands during replay
+                break;
+        }
+    }
+    
+    /**
+     * Clear all shapes from the manager
+     */
+    private void clearAllShapes() {
+        // Get all shape names first to avoid concurrent modification
+        List<String> shapeNames = new ArrayList<>();
+        for (Shape shape : manager.getAllShapes()) {
+            shapeNames.add(shape.getName());
+        }
+        
+        // Delete all shapes
+        for (String name : shapeNames) {
             try {
-                switch (op) {
-                    case "rectangle":
-                        createRectangle(tokens);
-                        break;
-                    case "line":
-                        createLine(tokens);
-                        break;
-                    case "circle":
-                        createCircle(tokens);
-                        break;
-                    case "square":
-                        createSquare(tokens);
-                        break;
-                    case "group":
-                        groupShapes(tokens);
-                        break;
-                    case "ungroup":
-                        ungroupShapes(tokens);
-                        break;
-                    case "delete":
-                        deleteShape(tokens);
-                        break;
-                    case "boundingbox":
-                        calculateBoundingBox(tokens);
-                        break;
-                    case "move":
-                        moveShape(tokens);
-                        break;
-                    case "shapeat":
-                        findTopmost(tokens);
-                        break;
-                    case "intersect":
-                        intersect(tokens);
-                        break;
-                    case "list":
-                        listShape(tokens);
-                        break;
-                    case "listall":
-                        listAll(tokens);
-                        break;
-                    case "quit":
-                        quit();
-                        break;
-                    case "help":
-                        showHelp();
-                        break;
-                    default:
-                        System.out.println("Unknown command: " + op);
-                        // Log unknown command - just use logCommand
-                        ClevisLogger.logCommand("Error: Unknown command - " + op);
-                }
+                manager.deleteShape(name);
             } catch (ClevisException e) {
-                System.out.println("Error: " + e.getMessage());
-                // Log the error - use logCommand for error messages too
-                ClevisLogger.logCommand("Error: " + e.getMessage() + " [Command: " + trimmed + "]");
-            } catch (NumberFormatException e) {
-                System.out.println("Error: invalid number format.");
-                ClevisLogger.logCommand("Error: Invalid number format [Command: " + trimmed + "]");
-            } catch (RuntimeException e) {
-                System.out.println("Runtime error: " + e.getMessage());
-                ClevisLogger.logCommand("Runtime Error: " + e.getMessage() + " [Command: " + trimmed + "]");
+                // Ignore errors during cleanup
             }
         }
+    }
+    
+    /**
+     * Get current history status
+     */
+    private String getHistoryStatus() {
+        return "Current state: " + (currentHistoryIndex + 1) + "/" + commandHistory.size() + " commands";
+    }
+    
+    /**
+     * Get undo/redo status for GUI
+     */
+    public String getUndoRedoStatus() {
+        boolean canUndo = currentHistoryIndex >= 0;
+        boolean canRedo = currentHistoryIndex < commandHistory.size() - 1;
+        
+        return String.format("Undo: %s | Redo: %s | History: %d commands", 
+            canUndo ? "Yes" : "No", 
+            canRedo ? "Yes" : "No",
+            commandHistory.size());
+    }
 
         /**
          * Enables or disables test mode.
@@ -302,6 +478,12 @@ public class Clevis {
                 members.add(s);
             }
 
+            for (Shape s : members) {
+                if (s.getName().equals(groupName)) {
+                    throw new DuplicateShapeException("Cannot group a shape with the same name that is already in the group: " + s.getName());
+                }
+            }
+
             if (members.isEmpty()) {
                 throw new ClevisException("Group must have at least one member.");
             }
@@ -310,6 +492,7 @@ public class Clevis {
             for (Shape s : members) {
                 manager.deleteShape(s.getName());
             }
+
             manager.addShape(newGroup);
 
             StringBuilder memberNames = new StringBuilder();
@@ -339,20 +522,44 @@ public class Clevis {
                 throw new ClevisException("Shape '" + groupName + "' is not a group.");
             }
 
-            StringBuilder memberNames = new StringBuilder();
             List<Shape> members = g.getMembers();
-            for (int i = 0; i < members.size(); i++) {
-                if (i > 0) memberNames.append(",");
-                memberNames.append(members.get(i).getName());
+            
+            // STEP 1: Rename any external shapes that conflict with group member names
+            for (Shape member : members) {
+                String memberName = member.getName();
+                Shape externalShape = manager.getShape(memberName);
+                
+                // If there's an external shape with the same name (not in our group)
+                if (externalShape != null && externalShape != member) {
+                    String newName = findUniqueName(memberName);
+                    manager.changeShapeName(memberName, newName);
+                    System.out.printf("Renamed external shape %s to %s%n", memberName, newName);
+                }
             }
 
+            // STEP 2: Now ungroup normally (no conflicts should exist)
+            StringBuilder memberNames = new StringBuilder();
+            
+            // Delete the group
             manager.deleteShape(groupName);
-            for (Shape m : g.getMembers()) {
-                manager.addShape(m);
+            
+            // Add all members back (they should already be in the group with correct names)
+            for (Shape member : members) {
+                manager.addShape(member);
+                if (memberNames.length() > 0) memberNames.append(",");
+                memberNames.append(member.getName());
             }
 
             System.out.printf("Ungrouped %s into: %s%n", groupName, memberNames.toString());
-            // No additional logging needed
+        }
+
+        private String findUniqueName(String baseName) {
+            String newName = baseName;
+            int counter = 1;
+            while (manager.getShape(newName) != null) {
+                newName = baseName + "_" + counter++;
+            }
+            return newName;
         }
 
         /**

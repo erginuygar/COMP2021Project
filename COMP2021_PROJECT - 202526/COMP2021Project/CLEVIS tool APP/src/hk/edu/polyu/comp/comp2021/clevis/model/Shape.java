@@ -50,4 +50,13 @@ public interface Shape {
      * @return true if the point is covered, false otherwise
      */
     boolean coversPoint(double x, double y);
+    
+    
+    /**
+     * Changes the name of this shape.
+     *
+     * @param newName the new name for this shape
+     * @throws IllegalArgumentException if newName is null or empty
+     */
+    void changeName(String newName);
 }

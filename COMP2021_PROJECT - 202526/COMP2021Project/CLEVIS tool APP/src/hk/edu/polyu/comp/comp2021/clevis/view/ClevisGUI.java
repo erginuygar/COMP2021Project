@@ -163,6 +163,7 @@ public class ClevisGUI {
         JButton refreshBtn = new JButton("Refresh View");
         refreshBtn.addActionListener(e -> {
             drawingPanel.repaint();
+            drawingPanel.clearBoundingBox(); // Clear bounding box visualization
             updateShapeList();
         });
         
@@ -181,6 +182,8 @@ public class ClevisGUI {
             if (selected != null) {
                 String shapeName = selected.split(" ")[0];
                 executeCommand("boundingbox " + shapeName);
+                // Show bounding box visualization
+                drawingPanel.showBoundingBoxForShape(shapeName);
             }
         });
         
@@ -244,6 +247,14 @@ public class ClevisGUI {
         drawingPanel.repaint();
         updateShapeList();
         commandHistory.setCaretPosition(commandHistory.getDocument().getLength());
+
+        if (command.trim().toLowerCase().startsWith("boundingbox ")) {
+        String[] tokens = command.trim().split("\\s+");
+        if (tokens.length >= 2) {
+            String shapeName = tokens[1];
+            drawingPanel.showBoundingBoxForShape(shapeName);
+        }
+    }
     }
     
     private void updateShapeList() {

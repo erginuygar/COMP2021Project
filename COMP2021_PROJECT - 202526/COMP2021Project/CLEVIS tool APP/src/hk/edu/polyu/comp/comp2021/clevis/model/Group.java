@@ -9,7 +9,7 @@ import java.util.*;
  */
 public final class Group implements Shape {
 
-    private final String name;
+    private String name;
     private final List<Shape> members;
 
     /**
@@ -27,9 +27,10 @@ public final class Group implements Shape {
         }
 
         this.name = name;
+        
+        // Store references to original members (no deep copies)
         this.members = new ArrayList<>(members);
     }
-
     /**
      * Returns an unmodifiable list of member shapes.
      *
@@ -98,5 +99,13 @@ public final class Group implements Shape {
             }
         }
         return false;
+    }
+
+    @Override
+    public void changeName(String newName) {
+        if (newName == null || newName.isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or empty");
+        }
+        this.name = newName;
     }
 }

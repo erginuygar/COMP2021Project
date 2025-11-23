@@ -16,6 +16,10 @@ public class DrawingPanel extends JPanel {
     private int panX = 0;
     private int panY = 0;
     
+    private String boundingBoxShapeName = null;
+    private boolean showBoundingBox = false;
+    
+    
     public DrawingPanel(ShapeManager shapeManager) {
         this.shapeManager = shapeManager;
         setBackground(Color.WHITE);
@@ -122,8 +126,45 @@ public class DrawingPanel extends JPanel {
     public double getZoomFactor() {
         return zoomFactor;
     }
+        /**
+     * Show bounding box for a specific shape
+     */
+    public void showBoundingBoxForShape(String shapeName) {
+        this.boundingBoxShapeName = shapeName;
+        this.showBoundingBox = true;
+        repaint();
+    }
     
-    @Override
+    /**
+     * Hide bounding box visualization
+     */
+    public void clearBoundingBox() {
+        this.showBoundingBox = false;
+        this.boundingBoxShapeName = null;
+        repaint();
+    }
+    
+    /**
+     * Get the bounding box coordinates for a shape
+     */
+    private double[] getBoundingBoxCoordinates(Shape shape) {
+        try {
+            String bbox = shape.getBoundingBox();
+            String[] coords = bbox.split("\\s+");
+            if (coords.length >= 4) {
+                return new double[]{
+                    Double.parseDouble(coords[0]),
+                    Double.parseDouble(coords[1]),
+                    Double.parseDouble(coords[2]),
+                    Double.parseDouble(coords[3])
+                };
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting bounding box for " + shape.getName() + ": " + e.getMessage());
+        }
+        return null;
+    }
+     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
@@ -143,6 +184,11 @@ public class DrawingPanel extends JPanel {
             drawShape(g2d, shape);
         }
         
+        // ADD THIS: Draw bounding box if enabled
+        if (showBoundingBox && boundingBoxShapeName != null) {
+            drawBoundingBox(g2d);
+        }
+        
         // Restore original transform
         g2d.setTransform(originalTransform);
         
@@ -154,6 +200,47 @@ public class DrawingPanel extends JPanel {
             g2d.setColor(Color.GRAY);
             g2d.drawString("No shapes created. Use commands or buttons to create shapes.", 50, 300);
         }
+    }
+/**
+     * Draw highlighted bounding box for the selected shape
+     */
+    private void drawBoundingBox(Graphics2D g2d) {
+        Shape targetShape = shapeManager.getShape(boundingBoxShapeName);
+        if (targetShape == null) {
+            return;
+        }
+        
+        double[] bbox = getBoundingBoxCoordinates(targetShape);
+        if (bbox == null) {
+            return;
+        }
+        
+        double x = bbox[0];
+        double y = bbox[1];
+        double w = bbox[2];
+        double h = bbox[3];
+        
+        // Draw bounding box with highlighted style
+        g2d.setColor(Color.RED);
+        g2d.setStroke(new BasicStroke(3)); // Thicker line
+        
+        // Draw rectangle
+        g2d.drawRect((int)x, (int)y, (int)w, (int)h);
+        
+        // Draw corner markers
+        int markerSize = 6;
+        g2d.fillRect((int)x - markerSize/2, (int)y - markerSize/2, markerSize, markerSize); // Top-left
+        g2d.fillRect((int)(x + w) - markerSize/2, (int)y - markerSize/2, markerSize, markerSize); // Top-right
+        g2d.fillRect((int)x - markerSize/2, (int)(y + h) - markerSize/2, markerSize, markerSize); // Bottom-left
+        g2d.fillRect((int)(x + w) - markerSize/2, (int)(y + h) - markerSize/2, markerSize, markerSize); // Bottom-right
+        
+        // Draw bounding box info
+        g2d.setFont(new Font("Arial", Font.BOLD, 12));
+        String bboxInfo = String.format("BBox: (%.1f, %.1f) w=%.1f h=%.1f", x, y, w, h);
+        g2d.drawString(bboxInfo, (int)x, (int)y - 10);
+        
+        // Reset stroke to normal
+        g2d.setStroke(new BasicStroke(2));
     }
     
     private void drawZoomInfo(Graphics2D g2d) {
