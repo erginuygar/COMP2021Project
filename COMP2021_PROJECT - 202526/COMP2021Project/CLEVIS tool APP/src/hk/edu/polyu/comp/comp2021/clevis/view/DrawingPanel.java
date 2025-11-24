@@ -392,33 +392,29 @@ public class DrawingPanel extends JPanel {
         g2d.drawString(shape.getName(), (int)x, (int)y - 5);
     }
     
-private void drawGroup(Graphics2D g2d, Shape shape, double x, double y, double w, double h) {
-    // Cast to Group to access members
-    if (shape instanceof hk.edu.polyu.comp.comp2021.clevis.model.Group group) {
-        // Draw ALL individual member shapes
-        List<Shape> members = group.getMembers();
-        for (Shape member : members) {
-            drawShape(g2d, member);  // Recursively draw each member
+    private void drawGroup(Graphics2D g2d, Shape shape, double x, double y, double w, double h) {
+        // Draw all member shapes WITHOUT names
+        if (shape instanceof hk.edu.polyu.comp.comp2021.clevis.model.Group group) {
+            List<Shape> members = group.getMembers();
+            for (Shape member : members) {
+                drawShapeWithoutName(g2d, member);
+            }
         }
         
-        // Draw group boundary with dashed line (optional visual indicator)
+        // Draw group boundary and ONLY group name
         g2d.setColor(Color.RED);
         float[] dashPattern = {5, 5};
         g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, 
                                     BasicStroke.JOIN_MITER, 10, dashPattern, 0));
         g2d.drawRect((int)x, (int)y, (int)w, (int)h);
         
-        // Draw group name
+        // Draw ONLY the group name (not individual shape names)
         g2d.setFont(new Font("Arial", Font.BOLD, 12));
         g2d.drawString("Group: " + shape.getName(), (int)x, (int)y - 5);
         
-        // Reset stroke for normal drawing
+        // Reset stroke
         g2d.setStroke(new BasicStroke(2));
-    } else {
-        // Fallback if it's not actually a Group
-        drawGenericShape(g2d, shape, x, y, w, h);
     }
-}
     private void drawGenericShape(Graphics2D g2d, Shape shape, double x, double y, double w, double h) {
         // Draw bounding box for unknown shape types
         g2d.setColor(Color.GRAY);
@@ -436,4 +432,100 @@ private void drawGroup(Graphics2D g2d, Shape shape, double x, double y, double w
         g2d.setColor(Color.GRAY);
         g2d.drawString(shape.getName() + " - " + shape.getClass().getSimpleName(), 10, 20);
     }
+
+    private void drawShapeWithoutName(Graphics2D g2d, Shape shape) {
+    // Same as drawShape but never draws names
+    g2d.setColor(Color.BLACK);
+    g2d.setStroke(new BasicStroke(2));
+    
+    try {
+        String bbox = shape.getBoundingBox();
+        String[] coords = bbox.split("\\s+");
+        if (coords.length < 4) return;
+        
+        double x = Double.parseDouble(coords[0]);
+        double y = Double.parseDouble(coords[1]);
+        double w = Double.parseDouble(coords[2]);
+        double h = Double.parseDouble(coords[3]);
+        
+        String className = shape.getClass().getSimpleName();
+        
+        switch (className) {
+            case "Rectangle":
+                g2d.drawRect((int)x, (int)y, (int)w, (int)h);
+                break;
+            case "Circle":
+                g2d.drawOval((int)x, (int)y, (int)w, (int)h);
+                break;
+            case "Line":
+                drawLineWithoutName(g2d, shape);
+                break;
+            case "Square":
+                g2d.drawRect((int)x, (int)y, (int)w, (int)h);
+                break;
+            case "Group":
+                // Recursively draw nested groups without names
+                drawGroupWithoutName(g2d, shape, x, y, w, h);
+                break;
+        }
+    } catch (Exception e) {
+        // Skip drawing if error
+    }
+}
+
+private void drawLineWithoutName(Graphics2D g2d, Shape shape) {
+    try {
+        String info = shape.getInfo();
+        if (info.contains("(") && info.contains(")")) {
+            String[] parts = info.split("[\\(\\)\\,]");
+            double x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+            int coordCount = 0;
+            
+            for (String part : parts) {
+                part = part.trim();
+                if (!part.isEmpty() && Character.isDigit(part.charAt(0))) {
+                    try {
+                        double coord = Double.parseDouble(part);
+                        switch (coordCount) {
+                            case 0: x1 = coord; break;
+                            case 1: y1 = coord; break;
+                            case 2: x2 = coord; break;
+                            case 3: y2 = coord; break;
+                        }
+                        coordCount++;
+                    } catch (NumberFormatException e) {
+                        // Skip non-numeric parts
+                    }
+                }
+            }
+            
+            if (coordCount >= 4) {
+                g2d.drawLine((int)x1, (int)y1, (int)x2, (int)y2);
+                return;
+            }
+        }
+        
+        // Fallback
+        String bbox = shape.getBoundingBox();
+        String[] coords = bbox.split("\\s+");
+        double x1 = Double.parseDouble(coords[0]);
+        double y1 = Double.parseDouble(coords[1]);
+        double x2 = x1 + Double.parseDouble(coords[2]);
+        double y2 = y1 + Double.parseDouble(coords[3]);
+        g2d.drawLine((int)x1, (int)y1, (int)x2, (int)y2);
+        
+    } catch (Exception e) {
+        // Skip drawing if error
+    }
+}
+
+    private void drawGroupWithoutName(Graphics2D g2d, Shape shape, double x, double y, double w, double h) {
+        if (shape instanceof hk.edu.polyu.comp.comp2021.clevis.model.Group group) {
+            List<Shape> members = group.getMembers();
+            for (Shape member : members) {
+                drawShapeWithoutName(g2d, member);
+            }
+        }
+    }
+
 }

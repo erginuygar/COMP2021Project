@@ -1,16 +1,16 @@
-rectangle one 1 1 20 20
-rectangle three 50 50 20 20
-circle four 60 60 250
-delete four
+rectangle one 1 1 10 10
 delete one
-delete three
-rectangle wall1 50 100 40 80 rectangle wall2 110 100 40 80 rectangle door 80 140 20 40 line roof 50 100 150 100 group house wall1 wall2 door roof
 rectangle wall1 50 100 40 80
 rectangle wall2 110 100 40 80
 rectangle door 80 140 20 40
-move door 10
 move door 10 0
 line roof 50 100 150 100
-group house wall1 wall2 door roof
-move house 10 10
+line roof_left 50 100 100 60
+line roof_right 100 60 150 100
+group house wall1 wall2 door roof roof_left roof_right
+rectangle house 1 1 10 10
+rectangle door 1 1 10 10
+ungroup house
+group house wall1 wall2 door roof roof_left roof_right
 move house 250 250
+quit
