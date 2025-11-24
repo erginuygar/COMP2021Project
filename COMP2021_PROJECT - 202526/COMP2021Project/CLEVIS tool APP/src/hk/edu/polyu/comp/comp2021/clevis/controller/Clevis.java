@@ -503,42 +503,55 @@ public static class CommandParser {
                 throw new ClevisException("Usage: group n n1 n2 ...");
             }
 
-            final String groupName = tokens[1];
-            final List<Shape> members = new ArrayList<>();
+            final String groupName = tokens[1].trim();
 
-            for (int i = 2; i < tokens.length; i++) {
-                final Shape s = manager.getShape(tokens[i]);
-                if (s == null) {
-                    throw new ClevisException.ShapeNotFoundException("Shape not found: " + tokens[i]);
-                }
-                members.add(s);
+            // Ensure group name not already used
+            if (manager.getShape(groupName) != null) {
+                throw new ClevisException("Shape already exists: " + groupName);
             }
 
-            for (Shape s : members) {
-                if (s.getName().equals(groupName)) {
-                    throw new DuplicateShapeException("Cannot group a shape with the same name that is already in the group: " + s.getName());
+            final List<Shape> members = new ArrayList<>();
+            final List<String> originalNames = new ArrayList<>();
+            final List<Integer> originalIndices = new ArrayList<>();
+
+            // capture global order to compute indices (bottom-to-top)
+            final List<Shape> global = manager.getAllShapes();
+
+            for (int i = 2; i < tokens.length; i++) {
+                final String mname = tokens[i].trim();
+                final Shape s = manager.getShape(mname);
+                if (s == null) {
+                    throw new ClevisException.ShapeNotFoundException("Shape not found: " + mname);
                 }
+                // don't allow grouping an existing group (avoid nested groups unless desired)
+                if (s instanceof Group) {
+                    throw new ClevisException("Cannot group an existing group: " + mname);
+                }
+                members.add(s);
+                originalNames.add(s.getName());
+                originalIndices.add(global.indexOf(s)); // index in the current z-order
             }
 
             if (members.isEmpty()) {
                 throw new ClevisException("Group must have at least one member.");
             }
 
-            final Group newGroup = new Group(groupName, members);
+            // Remove members from manager (they become exclusively accessible via the group)
             for (Shape s : members) {
                 manager.deleteShape(s.getName());
             }
 
+            // Create Group that holds references and metadata
+            final Group newGroup = new Group(groupName, members, originalNames, originalIndices);
             manager.addShape(newGroup);
 
-            StringBuilder memberNames = new StringBuilder();
-            for (int i = 0; i < members.size(); i++) {
+            final StringBuilder memberNames = new StringBuilder();
+            for (int i = 0; i < originalNames.size(); i++) {
                 if (i > 0) memberNames.append(",");
-                memberNames.append(members.get(i).getName());
+                memberNames.append(originalNames.get(i));
             }
 
             System.out.printf("Created group %s containing: %s%n", groupName, memberNames.toString());
-            // No additional logging needed - command is already logged
         }
 
         /**
@@ -549,7 +562,7 @@ public static class CommandParser {
                 throw new ClevisException("Usage: ungroup n");
             }
 
-            final String groupName = tokens[1];
+            final String groupName = tokens[1].trim();
             final Shape s = manager.getShape(groupName);
             if (s == null) {
                 throw new ClevisException.ShapeNotFoundException("Shape not found: " + groupName);
@@ -558,44 +571,75 @@ public static class CommandParser {
                 throw new ClevisException("Shape '" + groupName + "' is not a group.");
             }
 
-            List<Shape> members = g.getMembers();
-            
-            // STEP 1: Rename any external shapes that conflict with group member names
-            for (Shape member : members) {
-                String memberName = member.getName();
-                Shape externalShape = manager.getShape(memberName);
-                
-                // If there's an external shape with the same name (not in our group)
-                if (externalShape != null && externalShape != member) {
-                    String newName = findUniqueName(memberName);
-                    manager.changeShapeName(memberName, newName);
-                    System.out.printf("Renamed external shape %s to %s%n", memberName, newName);
-                }
-            }
+            // copy meta & members so we don't depend on group's internal mutability
+            final List<Shape> members = new ArrayList<>(g.getMembers());
+            final List<String> originalNames = g.getOriginalNames();
+            final List<Integer> originalIndices = g.getOriginalIndices();
 
-            // STEP 2: Now ungroup normally (no conflicts should exist)
-            StringBuilder memberNames = new StringBuilder();
-            
-            // Delete the group
+            // Remove the group from manager first so original names are not reported as conflicts against themselves
             manager.deleteShape(groupName);
-            
-            // Add all members back (they should already be in the group with correct names)
-            for (Shape member : members) {
-                manager.addShape(member);
-                if (memberNames.length() > 0) memberNames.append(",");
-                memberNames.append(member.getName());
+
+            // Build tuples of (index, member, desiredName) and sort ascending by index
+            final List<Triple> triples = new ArrayList<>();
+            for (int i = 0; i < members.size(); i++) {
+                final Shape member = members.get(i);
+                final String desired = (i < originalNames.size()) ? originalNames.get(i) : member.getName();
+                final int idx = (i < originalIndices.size()) ? originalIndices.get(i) : -1;
+                triples.add(new Triple(idx, member, desired));
+            }
+            triples.sort(Comparator.comparingInt(t -> t.index < 0 ? Integer.MAX_VALUE : t.index));
+
+            final List<String> restoredNamesPrinted = new ArrayList<>();
+
+            for (Triple t : triples) {
+                final Shape member = t.member;
+                final String desired = t.desiredName;
+                final String targetName = makeUniqueName(desired);
+
+                // rename shape to targetName
+                member.setName(targetName);
+
+                // insert at index if known, otherwise append
+                if (t.index >= 0) {
+                    // clamp index into current range
+                    int insertIndex = t.index;
+                    if (insertIndex < 0) insertIndex = 0;
+                    if (insertIndex > manager.getAllShapes().size()) insertIndex = manager.getAllShapes().size();
+                    manager.addShapeAt(insertIndex, member);
+                } else {
+                    manager.addShape(member);
+                }
+
+                restoredNamesPrinted.add(targetName);
             }
 
-            System.out.printf("Ungrouped %s into: %s%n", groupName, memberNames.toString());
+            System.out.printf("Ungrouped %s into: %s%n", groupName, String.join(",", restoredNamesPrinted));
         }
 
-        private String findUniqueName(String baseName) {
-            String newName = baseName;
-            int counter = 1;
-            while (manager.getShape(newName) != null) {
-                newName = baseName + "_" + counter++;
+        /** Helper triple used only in this method scope to keep code tidy. */
+        private static final class Triple {
+            final int index;
+            final Shape member;
+            final String desiredName;
+
+            Triple(final int index, final Shape member, final String desiredName) {
+                this.index = index;
+                this.member = member;
+                this.desiredName = desiredName;
             }
-            return newName;
+        }
+
+        /**
+         * Return a name that is not already in manager by appending suffix _n if necessary.
+         */
+        private String makeUniqueName(String base) {
+            if (manager.getShape(base) == null) return base;
+            int i = 1;
+            String candidate;
+            do {
+                candidate = base + "_" + i++;
+            } while (manager.getShape(candidate) != null);
+            return candidate;
         }
 
         /**
@@ -827,4 +871,5 @@ public static class CommandParser {
         }
     }
         
+
 }
