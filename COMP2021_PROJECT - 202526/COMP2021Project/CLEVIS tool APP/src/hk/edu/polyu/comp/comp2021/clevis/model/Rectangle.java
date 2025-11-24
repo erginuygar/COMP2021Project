@@ -50,7 +50,14 @@ public final class Rectangle implements Shape {
     public String getName() {
         return name;
     }
-
+    
+    @Override
+    public void setName(String newName) {
+        if (newName == null || newName.isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or empty.");
+        }
+        this.name = newName;
+    }
     @Override
     public String getInfo() {
         return String.format(Locale.ROOT,
@@ -82,3 +89,4 @@ public final class Rectangle implements Shape {
         this.name = newName;
     }
 }
+
