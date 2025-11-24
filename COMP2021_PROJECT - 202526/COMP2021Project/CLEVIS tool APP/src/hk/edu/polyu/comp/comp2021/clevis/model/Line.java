@@ -52,6 +52,14 @@ public final class Line implements Shape {
     }
 
     @Override
+    public void setName(String newName) {
+        if (newName == null || newName.isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or empty.");
+        }
+        this.name = newName;
+    }
+    
+    @Override
     public String getInfo() {
         return String.format(Locale.ROOT,
                 "Line[name:%s,(x1,y1):(%.2f,%.2f),(x2,y2):(%.2f,%.2f)]",
@@ -93,3 +101,4 @@ public final class Line implements Shape {
         this.name = newName;
     }
 }
+
