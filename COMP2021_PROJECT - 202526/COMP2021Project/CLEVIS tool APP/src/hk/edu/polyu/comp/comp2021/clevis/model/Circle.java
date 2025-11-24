@@ -12,7 +12,7 @@ public final class Circle implements Shape {
     private String name;
     private double x;
     private double y;
-    private final double radius;
+    private double radius;
 
     /**
      * Constructs a Circle.
@@ -47,6 +47,14 @@ public final class Circle implements Shape {
     }
 
     @Override
+    public void setName(String newName) {
+        if (newName == null || newName.isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or empty.");
+        }
+        this.name = newName;
+    }
+    
+    @Override
     public String getInfo() {
         return String.format("Circle(center=(%.2f,%.2f), radius=%.2f)", x, y, radius);
     }
@@ -80,4 +88,5 @@ public final class Circle implements Shape {
         }
         this.name = newName;
     }
+
 }
