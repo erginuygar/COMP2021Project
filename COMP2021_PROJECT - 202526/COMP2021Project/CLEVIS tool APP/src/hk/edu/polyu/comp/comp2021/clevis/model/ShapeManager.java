@@ -28,6 +28,27 @@ public final class ShapeManager {
     }
 
     /**
+     * Adds a shape at a specific z-order index.
+     * index is clamped into [0, size]. If index == size => append (topmost).
+     *
+     * @param index insertion index (bottom = 0)
+     * @param shape shape to add
+     * @throws ClevisException.DuplicateShapeException if a shape with the same name already exists
+     */
+    public void addShapeAt(final int index, final Shape shape) throws ClevisException.DuplicateShapeException {
+        Objects.requireNonNull(shape, "shape cannot be null");
+        if (shapesByName.containsKey(shape.getName())) {
+            throw new ClevisException.DuplicateShapeException(
+                    "The shape '" + shape.getName() + "' is already in the list.");
+        }
+        int idx = index;
+        if (idx < 0) idx = 0;
+        if (idx > shapesList.size()) idx = shapesList.size();
+        shapesList.add(idx, shape);
+        shapesByName.put(shape.getName(), shape);
+    }
+
+    /**
      * Deletes a shape. If it is a group, deletes the group and its members.
      *
      * @param name name of the shape to delete
@@ -102,4 +123,5 @@ public final class ShapeManager {
         shape.changeName(newName);
         shapesByName.put(newName, shape);
     }
+
 }
