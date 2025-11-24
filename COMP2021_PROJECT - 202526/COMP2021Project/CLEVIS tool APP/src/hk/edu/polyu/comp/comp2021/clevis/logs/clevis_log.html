@@ -26,23 +26,23 @@ th { background-color: #f2f2f2; }
 </tr>
 <tr>
 <td>4</td>
-<td>group wall1 wall2 door</td>
+<td>move door 10 0</td>
 </tr>
 <tr>
 <td>5</td>
-<td>group house wall1 wall2 door</td>
+<td>line roof 50 100 150 100</td>
 </tr>
 <tr>
 <td>6</td>
-<td>rectangle wall1 1 1 10 10</td>
+<td>line roof_left 50 100 100 60</td>
 </tr>
 <tr>
 <td>7</td>
-<td>ungroup house</td>
+<td>line roof_right 100 60 150 100</td>
 </tr>
 <tr>
 <td>8</td>
-<td>delete wall1_1</td>
+<td>group house wall1 wall2 door roof roof_left roof_right</td>
 </tr>
 <tr>
 <td>9</td>
@@ -50,61 +50,5 @@ th { background-color: #f2f2f2; }
 </tr>
 <tr>
 <td>10</td>
-<td>group wall1 wall1 wall2 door</td>
-</tr>
-<tr>
-<td>11</td>
-<td>group house wall1 wall2 door</td>
-</tr>
-<tr>
-<td>12</td>
-<td>undo</td>
-</tr>
-<tr>
-<td>13</td>
-<td>group wall1_1 wall_2 door</td>
-</tr>
-<tr>
-<td>14</td>
-<td>group house wall1_1 wall_2 door</td>
-</tr>
-<tr>
-<td>15</td>
-<td>group wall1_1 wall2 door</td>
-</tr>
-<tr>
-<td>16</td>
-<td>group house wall1_1 wall2 door</td>
-</tr>
-<tr>
-<td>17</td>
-<td>rectangle house 1 1 10 10</td>
-</tr>
-<tr>
-<td>18</td>
-<td>ungroup house</td>
-</tr>
-<tr>
-<td>19</td>
-<td>listAll</td>
-</tr>
-<tr>
-<td>20</td>
-<td>group wall1_1 wall2 door</td>
-</tr>
-<tr>
-<td>21</td>
-<td>group house wall1_1 wall2 door</td>
-</tr>
-<tr>
-<td>22</td>
-<td>ungroup house</td>
-</tr>
-<tr>
-<td>23</td>
-<td>git reset</td>
-</tr>
-<tr>
-<td>24</td>
-<td>Error: Unknown command - git</td>
+<td>group house wall1 wall2 door roof roof_left roof_right</td>
 </tr>
