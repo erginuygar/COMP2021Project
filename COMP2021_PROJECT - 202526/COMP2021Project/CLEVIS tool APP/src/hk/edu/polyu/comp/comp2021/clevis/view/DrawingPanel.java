@@ -392,8 +392,16 @@ public class DrawingPanel extends JPanel {
         g2d.drawString(shape.getName(), (int)x, (int)y - 5);
     }
     
-    private void drawGroup(Graphics2D g2d, Shape shape, double x, double y, double w, double h) {
-        // Draw group boundary with dashed line
+private void drawGroup(Graphics2D g2d, Shape shape, double x, double y, double w, double h) {
+    // Cast to Group to access members
+    if (shape instanceof hk.edu.polyu.comp.comp2021.clevis.model.Group group) {
+        // Draw ALL individual member shapes
+        List<Shape> members = group.getMembers();
+        for (Shape member : members) {
+            drawShape(g2d, member);  // Recursively draw each member
+        }
+        
+        // Draw group boundary with dashed line (optional visual indicator)
         g2d.setColor(Color.RED);
         float[] dashPattern = {5, 5};
         g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, 
@@ -406,8 +414,11 @@ public class DrawingPanel extends JPanel {
         
         // Reset stroke for normal drawing
         g2d.setStroke(new BasicStroke(2));
+    } else {
+        // Fallback if it's not actually a Group
+        drawGenericShape(g2d, shape, x, y, w, h);
     }
-    
+}
     private void drawGenericShape(Graphics2D g2d, Shape shape, double x, double y, double w, double h) {
         // Draw bounding box for unknown shape types
         g2d.setColor(Color.GRAY);

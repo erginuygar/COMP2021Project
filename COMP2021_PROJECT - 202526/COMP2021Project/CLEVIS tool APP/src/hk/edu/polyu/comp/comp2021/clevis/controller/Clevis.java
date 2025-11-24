@@ -524,12 +524,14 @@ public static class CommandParser {
                 throw new ClevisException("Group must have at least one member.");
             }
 
+            
             final Group newGroup = new Group(groupName, members);
+            manager.addShape(newGroup);
             for (Shape s : members) {
                 manager.deleteShape(s.getName());
             }
 
-            manager.addShape(newGroup);
+            
 
             StringBuilder memberNames = new StringBuilder();
             for (int i = 0; i < members.size(); i++) {
