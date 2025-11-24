@@ -7,24 +7,31 @@ import java.util.*;
  * <p>
  * Maintains insertion order (Z-order: later shapes on top) and provides
  * operations used by the controller.
+ *
+ * Implementation uses a List for order and a Map for fast lookup.
  */
 public final class ShapeManager {
 
-    /** Stores shapes by name, preserving insertion order. */
-    private final Map<String, Shape> shapesByName = new LinkedHashMap<>();
+    /** Fast lookup by name. */
+    private final Map<String, Shape> shapesByName = new HashMap<>();
+
+    /** Maintains bottom-to-top order (index 0 is bottom). */
+    private final List<Shape> shapesList = new ArrayList<>();
 
     /**
-     * Adds a new shape to the manager.
+     * Adds a new shape to the end (topmost).
      *
      * @param shape shape to add
      * @throws ClevisException.DuplicateShapeException if a shape with the same name already exists
      */
     public void addShape(final Shape shape) throws ClevisException.DuplicateShapeException {
+        Objects.requireNonNull(shape, "shape cannot be null");
         if (shapesByName.containsKey(shape.getName())) {
             throw new ClevisException.DuplicateShapeException(
                     "The shape '" + shape.getName() + "' is already in the list.");
         }
         shapesByName.put(shape.getName(), shape);
+        shapesList.add(shape);
     }
 
     /**
@@ -49,25 +56,22 @@ public final class ShapeManager {
     }
 
     /**
-     * Deletes a shape. If it is a group, deletes the group and its members.
+     * Deletes a shape. If it is a group, deletes only the group itself;
+     * members are not removed because grouped members are not present in the manager.
      *
      * @param name name of the shape to delete
      * @throws ClevisException.ShapeNotFoundException if the shape does not exist
      */
     public void deleteShape(final String name) throws ClevisException.ShapeNotFoundException {
-        final Shape shape = shapesByName.get(name);
+        final Shape shape = shapesByName.remove(name);
         if (shape == null) {
             throw new ClevisException.ShapeNotFoundException("The shape '" + name + "' is not in the list.");
         }
 
-        // If group, remove its members as well (REQ8)
-        if (shape instanceof Group group) {
-            for (Shape member : group.getMembers()) {
-                shapesByName.remove(member.getName());
-            }
-        }
+        shapesList.remove(shape);
 
-        shapesByName.remove(name);
+    // Do NOT automatically remove group members from manager.
+    // When grouping we remove members from the manager; deleting a group only removes the group.
     }
 
     /**
@@ -86,7 +90,7 @@ public final class ShapeManager {
      * @return list of all shapes
      */
     public List<Shape> getAllShapes() {
-        return new ArrayList<>(shapesByName.values());
+        return new ArrayList<>(shapesList);
     }
 
     /**
@@ -103,25 +107,4 @@ public final class ShapeManager {
         }
         return shape.getBoundingBox();
     }
-
-        /**
-     * Changes the name of a shape while maintaining its reference in the manager.
-     *
-     * @param oldName the current name of the shape
-     * @param newName the new name for the shape
-     * @throws ClevisException if oldName doesn't exist or newName already exists
-     */
-    public void changeShapeName(String oldName, String newName) throws ClevisException {
-        if (!shapesByName.containsKey(oldName)) {
-            throw new ClevisException("Shape not found: " + oldName);
-        }
-        if (shapesByName.containsKey(newName)) {
-            throw new ClevisException("Shape name already exists: " + newName);
-        }
-        
-        Shape shape = shapesByName.remove(oldName);
-        shape.changeName(newName);
-        shapesByName.put(newName, shape);
-    }
-
 }
