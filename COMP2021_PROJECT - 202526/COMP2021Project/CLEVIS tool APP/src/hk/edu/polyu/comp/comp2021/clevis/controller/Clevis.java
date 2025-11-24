@@ -541,7 +541,7 @@ public static class CommandParser {
                 manager.deleteShape(s.getName());
             }
 
-            manager.addShape(newGroup);
+                
 
             final StringBuilder memberNames = new StringBuilder();
             for (int i = 0; i < originalNames.size(); i++) {
