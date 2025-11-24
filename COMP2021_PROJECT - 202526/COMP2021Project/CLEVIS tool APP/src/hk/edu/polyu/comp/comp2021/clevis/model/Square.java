@@ -12,7 +12,7 @@ public final class Square implements Shape {
     private String name;
     private double x;
     private double y;
-    private final double length;
+    private double length;
 
     /**
      * Constructs a Square.
@@ -44,6 +44,14 @@ public final class Square implements Shape {
     @Override
     public String getName() {
         return name;
+    }
+    
+    @Override
+    public void setName(String newName) {
+        if (newName == null || newName.isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or empty.");
+        }
+        this.name = newName;
     }
 
     @Override
@@ -78,3 +86,4 @@ public final class Square implements Shape {
         this.name = newName;
     }
 }
+
