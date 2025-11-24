@@ -21,6 +21,14 @@ public interface Shape {
     String getName();
 
     /**
+     * Sets/renames this shape. Implementations should validate the new name.
+     *
+     * @param newName new name to set
+     * @throws IllegalArgumentException if newName is null/empty
+     */
+    void setName(String newName);
+
+    /**
      * Returns descriptive information about this shape.
      *
      * @return info string
@@ -60,3 +68,4 @@ public interface Shape {
      */
     void changeName(String newName);
 }
+
