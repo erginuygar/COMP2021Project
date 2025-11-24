@@ -1,14 +1,5 @@
-rectangle one 1 1 100 1000
-circle teo 1 1 250
-group three one teo
-undo
-undo
-redo
-redo
-undo
-undo
-undo
-redo
-redo
-redo
+rectangle one 1 1 10 10
+rectangle two 1 1 20 20
+help
+rectangle one 1 1 120 20
 quit

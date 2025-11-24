@@ -7,6 +7,8 @@ import hk.edu.polyu.comp.comp2021.clevis.model.Shape;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.List;
 
 public class ClevisGUI {
@@ -21,15 +23,112 @@ public class ClevisGUI {
     private JButton undoBtn;
     private JButton redoBtn;
     
+    // Output capturing streams
+    private ByteArrayOutputStream outputStream;
+    private PrintStream originalOut;
+    private PrintStream originalErr;
+    private GUIPrintStream guiPrintStream;
+    
     public ClevisGUI(ShapeManager shapeManager, Clevis.CommandParser parser) {
         this.shapeManager = shapeManager;
         this.parser = parser;
+        setupOutputCapture();
         initializeGUI();
+    }
+    
+    /**
+     * Set up output capture to redirect System.out and System.err to GUI
+     */
+    private void setupOutputCapture() {
+        // Save original streams
+        originalOut = System.out;
+        originalErr = System.err;
+        
+        // Create output stream that forwards to GUI
+        outputStream = new ByteArrayOutputStream() {
+            @Override
+            public void flush() {
+                String output = this.toString();
+                if (!output.isEmpty()) {
+                    appendToCommandHistory(output);
+                    this.reset(); // Clear the buffer after reading
+                }
+            }
+        };
+        
+        guiPrintStream = new GUIPrintStream(outputStream);
+        
+        // Redirect standard output and error
+        System.setOut(guiPrintStream);
+        System.setErr(guiPrintStream);
+    }
+    
+    /**
+     * Custom PrintStream that automatically flushes on newline
+     */
+    private class GUIPrintStream extends PrintStream {
+        public GUIPrintStream(ByteArrayOutputStream outputStream) {
+            super(outputStream, true); // autoflush
+        }
+        
+        @Override
+        public void println(String x) {
+            super.println(x);
+            flush(); // Force flush to update GUI immediately
+        }
+        
+        @Override
+        public void println(Object x) {
+            super.println(x);
+            flush();
+        }
+        
+        @Override
+        public void print(String s) {
+            super.print(s);
+            // Don't flush here to avoid too many updates
+        }
+    }
+    
+    /**
+     * Thread-safe method to append text to command history
+     */
+    private void appendToCommandHistory(String text) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            commandHistory.append(text);
+            commandHistory.setCaretPosition(commandHistory.getDocument().getLength());
+        } else {
+            SwingUtilities.invokeLater(() -> {
+                commandHistory.append(text);
+                commandHistory.setCaretPosition(commandHistory.getDocument().getLength());
+            });
+        }
+    }
+    
+    /**
+     * Restore original output streams when GUI closes
+     */
+    public void cleanup() {
+        if (originalOut != null) {
+            System.setOut(originalOut);
+        }
+        if (originalErr != null) {
+            System.setErr(originalErr);
+        }
     }
     
     private void initializeGUI() {
         mainFrame = new JFrame("Clevis Drawing Tool - GUI");
-        mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        mainFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        
+        // Add window listener to cleanup when GUI closes
+        mainFrame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                cleanup();
+            }
+        });
+        
         mainFrame.setLayout(new BorderLayout());
         
         createToolbar();
@@ -42,9 +141,14 @@ public class ClevisGUI {
         mainFrame.setLocationRelativeTo(null);
         mainFrame.setVisible(true);
         
-        // Initial status message
+        // Initial status message - use original stream to avoid capture issues
+        System.setOut(originalOut);
+        System.out.println("Clevis GUI Started - All output will appear below");
+        System.setOut(guiPrintStream);
+        
         commandHistory.append("Clevis GUI Started\n");
-        commandHistory.append("Use buttons or type commands to create shapes\n\n");
+        commandHistory.append("Use buttons or type commands to create shapes\n");
+        commandHistory.append("All command outputs and errors will appear here\n\n");
     }
     
         private void createToolbar() {
@@ -269,28 +373,39 @@ public class ClevisGUI {
     }
     
     private void executeCommand(String command) {
-    // Show the command that was executed
-    commandHistory.append("> " + command + "\n");
-    
-    // Execute the command - outputs will now appear via the callback
-    parser.execute(command);
-    
-    // Handle bounding box visualization
-    if (command.trim().toLowerCase().startsWith("boundingbox ")) {
-        String[] tokens = command.trim().split("\\s+");
-        if (tokens.length >= 2) {
-            String shapeName = tokens[1];
-            drawingPanel.showBoundingBoxForShape(shapeName);
+        // Show the command that was executed
+        appendToCommandHistory("> " + command + "\n");
+        
+        try {
+            // Execute the command - all outputs will now be captured
+            parser.execute(command);
+            
+            // Force flush any remaining output
+            guiPrintStream.flush();
+            
+        } catch (Exception e) {
+            // This will also be captured by our error stream redirection
+            System.err.println("Error executing command: " + e.getMessage());
         }
+        
+        // Handle bounding box visualization
+        if (command.trim().toLowerCase().startsWith("boundingbox ")) {
+            String[] tokens = command.trim().split("\\s+");
+            if (tokens.length >= 2) {
+                String shapeName = tokens[1];
+                drawingPanel.showBoundingBoxForShape(shapeName);
+            }
+        }
+        
+        drawingPanel.repaint();
+        updateShapeList();
+        
+        // UPDATE UNDO/REDO BUTTON STATES AFTER EVERY COMMAND
+        updateUndoRedoButtons();
+        
+        // Add a separator for readability
+        appendToCommandHistory("----------------------------------------\n");
     }
-    
-    drawingPanel.repaint();
-    updateShapeList();
-    commandHistory.setCaretPosition(commandHistory.getDocument().getLength());
-    
-    // UPDATE UNDO/REDO BUTTON STATES AFTER EVERY COMMAND
-    updateUndoRedoButtons();
-}
 
     private void updateUndoRedoButtons() {
     if (undoBtn != null && redoBtn != null) {
