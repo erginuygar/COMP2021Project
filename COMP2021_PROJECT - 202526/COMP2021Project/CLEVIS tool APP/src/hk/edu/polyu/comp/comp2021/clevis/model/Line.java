@@ -83,14 +83,33 @@ public final class Line implements Shape {
         return String.format(Locale.ROOT, "%.2f %.2f %.2f %.2f",
                 minX, minY, width, height);
     }
-
     @Override
     public boolean coversPoint(final double px, final double py) {
-        final double minX = Math.min(x1, x2);
-        final double maxX = Math.max(x1, x2);
-        final double minY = Math.min(y1, y2);
-        final double maxY = Math.max(y1, y2);
-        return px >= minX && px <= maxX && py >= minY && py <= maxY;
+        // Calculate the distance from point to line segment
+        double lineLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        
+        // If line has zero length, check if point equals the single point
+        if (lineLength == 0) {
+            return Math.abs(px - x1) < 1e-6 && Math.abs(py - y1) < 1e-6;
+        }
+        
+        // Calculate where the point projects onto the line
+        double t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / (lineLength * lineLength);
+        
+        // If projection is outside the segment, the point is not on the segment
+        if (t < 0 || t > 1) {
+            return false;
+        }
+        
+        // Find the closest point on the line segment
+        double closestX = x1 + t * (x2 - x1);
+        double closestY = y1 + t * (y2 - y1);
+        
+        // Calculate distance from point to closest point on line
+        double distance = Math.sqrt(Math.pow(px - closestX, 2) + Math.pow(py - closestY, 2));
+        
+        // Return true if distance is within tolerance (e.g., 2 pixels for click detection)
+        return distance <= 0.05;
     }
 
     @Override

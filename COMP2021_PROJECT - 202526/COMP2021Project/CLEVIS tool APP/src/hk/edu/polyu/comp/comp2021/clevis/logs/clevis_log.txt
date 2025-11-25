@@ -1,5 +1,2 @@
-rectangle one 1 1 10 10
-rectangle two 20 20 20 20
-group one one two
-group z one two
-move z 200 200
+line z 50 100 150 60
+shapeat 75 75
