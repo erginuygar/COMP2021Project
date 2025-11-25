@@ -7,7 +7,6 @@ import hk.edu.polyu.comp.comp2021.clevis.model.Shape;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.List;
 
@@ -22,77 +21,64 @@ public class ClevisGUI {
     private JLabel zoomLabel;
     private JButton undoBtn;
     private JButton redoBtn;
-    
-    // Output capturing streams
-    private ByteArrayOutputStream outputStream;
-    private PrintStream originalOut;
-    private PrintStream originalErr;
-    private GUIPrintStream guiPrintStream;
+    private javax.swing.Timer refreshTimer;
+    private int previousShapeCount = -1;
     
     public ClevisGUI(ShapeManager shapeManager, Clevis.CommandParser parser) {
         this.shapeManager = shapeManager;
         this.parser = parser;
-        setupOutputCapture();
+        setupDualOutput();
         initializeGUI();
+        startAutoRefresh();
     }
     
     /**
-     * Set up output capture to redirect System.out and System.err to GUI
+     * Set up output to go to BOTH terminal and GUI
      */
-    private void setupOutputCapture() {
-        // Save original streams
-        originalOut = System.out;
-        originalErr = System.err;
+    private void setupDualOutput() {
+        final PrintStream originalOut = System.out;
+        final PrintStream originalErr = System.err;
         
-        // Create output stream that forwards to GUI
-        outputStream = new ByteArrayOutputStream() {
+        // Create a PrintStream that sends to both terminal and GUI
+        PrintStream dualStream = new PrintStream(new java.io.OutputStream() {
+            private StringBuilder buffer = new StringBuilder();
+            
             @Override
-            public void flush() {
-                String output = this.toString();
-                if (!output.isEmpty()) {
-                    appendToCommandHistory(output);
-                    this.reset(); // Clear the buffer after reading
+            public void write(int b) {
+                // Send to original terminal
+                originalOut.write(b);
+                
+                // Buffer for GUI
+                buffer.append((char) b);
+                if ((char) b == '\n') {
+                    // Line complete, send to GUI
+                    String line = buffer.toString();
+                    appendToCommandHistory(line);
+                    buffer.setLength(0);
                 }
             }
-        };
+            
+            @Override
+            public void write(byte[] b, int off, int len) {
+                // Send to original terminal
+                originalOut.write(b, off, len);
+                
+                // Send to GUI
+                String text = new String(b, off, len);
+                appendToCommandHistory(text);
+            }
+            
+            @Override
+            public void flush() {
+                originalOut.flush();
+            }
+        });
         
-        guiPrintStream = new GUIPrintStream(outputStream);
-        
-        // Redirect standard output and error
-        System.setOut(guiPrintStream);
-        System.setErr(guiPrintStream);
+        // Redirect System.out and System.err to our dual stream
+        System.setOut(dualStream);
+        System.setErr(dualStream);
     }
     
-    /**
-     * Custom PrintStream that automatically flushes on newline
-     */
-    private class GUIPrintStream extends PrintStream {
-        public GUIPrintStream(ByteArrayOutputStream outputStream) {
-            super(outputStream, true); // autoflush
-        }
-        
-        @Override
-        public void println(String x) {
-            super.println(x);
-            flush(); // Force flush to update GUI immediately
-        }
-        
-        @Override
-        public void println(Object x) {
-            super.println(x);
-            flush();
-        }
-        
-        @Override
-        public void print(String s) {
-            super.print(s);
-            // Don't flush here to avoid too many updates
-        }
-    }
-    
-    /**
-     * Thread-safe method to append text to command history
-     */
     private void appendToCommandHistory(String text) {
         if (SwingUtilities.isEventDispatchThread()) {
             commandHistory.append(text);
@@ -105,15 +91,34 @@ public class ClevisGUI {
         }
     }
     
-    /**
-     * Restore original output streams when GUI closes
-     */
-    public void cleanup() {
-        if (originalOut != null) {
-            System.setOut(originalOut);
+    private void startAutoRefresh() {
+        refreshTimer = new javax.swing.Timer(1000, e -> {
+            checkForUpdates();
+        });
+        refreshTimer.start();
+    }
+    
+    private void checkForUpdates() {
+        try {
+            int currentShapeCount = shapeManager.getAllShapes().size();
+            
+            // If shape count changed, update GUI
+            if (currentShapeCount != previousShapeCount) {
+                previousShapeCount = currentShapeCount;
+                SwingUtilities.invokeLater(() -> {
+                    updateShapeList();
+                    drawingPanel.repaint();
+                    updateUndoRedoButtons();
+                });
+            }
+        } catch (Exception e) {
+            // Ignore errors during auto-refresh
         }
-        if (originalErr != null) {
-            System.setErr(originalErr);
+    }
+    
+    public void cleanup() {
+        if (refreshTimer != null) {
+            refreshTimer.stop();
         }
     }
     
@@ -141,17 +146,14 @@ public class ClevisGUI {
         mainFrame.setLocationRelativeTo(null);
         mainFrame.setVisible(true);
         
-        // Initial status message - use original stream to avoid capture issues
-        System.setOut(originalOut);
-        System.out.println("Clevis GUI Started - All output will appear below");
-        System.setOut(guiPrintStream);
-        
+        // Welcome message
         commandHistory.append("Clevis GUI Started\n");
-        commandHistory.append("Use buttons or type commands to create shapes\n");
-        commandHistory.append("All command outputs and errors will appear here\n\n");
+        commandHistory.append("Use buttons, type commands here, or use the terminal\n");
+        commandHistory.append("Both interfaces will stay synchronized\n\n");
+        commandHistory.setCaretPosition(commandHistory.getDocument().getLength());
     }
     
-        private void createToolbar() {
+    private void createToolbar() {
         JToolBar toolBar = new JToolBar();
         toolBar.setFloatable(false);
         
@@ -180,19 +182,19 @@ public class ClevisGUI {
             executeCommand(command);
         });
         
-        // ADD UNDO/REDO BUTTONS HERE
+        // Undo/Redo buttons
         JButton undoBtn = new JButton("Undo");
         undoBtn.setToolTipText("Undo the last command");
         undoBtn.addActionListener(e -> {
             executeCommand("undo");
-            updateUndoRedoButtons(); // Update button states
+            updateUndoRedoButtons();
         });
         
         JButton redoBtn = new JButton("Redo");
         redoBtn.setToolTipText("Redo the last undone command");
         redoBtn.addActionListener(e -> {
             executeCommand("redo");
-            updateUndoRedoButtons(); // Update button states
+            updateUndoRedoButtons();
         });
         
         // Zoom buttons
@@ -225,14 +227,19 @@ public class ClevisGUI {
         JButton helpBtn = new JButton("Help");
         helpBtn.addActionListener(e -> executeCommand("help"));
         
+        // Sync button
+        JButton syncBtn = new JButton("Sync Now");
+        syncBtn.setToolTipText("Force synchronization with terminal");
+        syncBtn.addActionListener(e -> forceSync());
+        
         // Add components to toolbar
         toolBar.add(rectBtn);
         toolBar.add(circleBtn);
         toolBar.add(lineBtn);
         toolBar.add(squareBtn);
         toolBar.addSeparator();
-        toolBar.add(undoBtn);    // Add undo button
-        toolBar.add(redoBtn);    // Add redo button
+        toolBar.add(undoBtn);
+        toolBar.add(redoBtn);
         toolBar.addSeparator();
         toolBar.add(zoomInBtn);
         toolBar.add(zoomOutBtn);
@@ -241,6 +248,8 @@ public class ClevisGUI {
         toolBar.addSeparator();
         toolBar.add(listAllBtn);
         toolBar.add(helpBtn);
+        toolBar.addSeparator();
+        toolBar.add(syncBtn);
         
         mainFrame.add(toolBar, BorderLayout.NORTH);
         
@@ -250,6 +259,13 @@ public class ClevisGUI {
         
         // Initial button state update
         updateUndoRedoButtons();
+    }
+    
+    private void forceSync() {
+        updateShapeList();
+        drawingPanel.repaint();
+        updateUndoRedoButtons();
+        appendToCommandHistory("[Manual synchronization completed]\n");
     }
     
     private void updateZoomLabel() {
@@ -294,7 +310,7 @@ public class ClevisGUI {
         JButton refreshBtn = new JButton("Refresh View");
         refreshBtn.addActionListener(e -> {
             drawingPanel.repaint();
-            drawingPanel.clearBoundingBox(); // Clear bounding box visualization
+            drawingPanel.clearBoundingBox();
             updateShapeList();
         });
         
@@ -302,7 +318,7 @@ public class ClevisGUI {
         deleteBtn.addActionListener(e -> {
             String selected = shapeList.getSelectedValue();
             if (selected != null) {
-                String shapeName = selected.split(" ")[0]; // Extract name before space
+                String shapeName = selected.split(" ")[0];
                 executeCommand("delete " + shapeName);
             }
         });
@@ -313,7 +329,6 @@ public class ClevisGUI {
             if (selected != null) {
                 String shapeName = selected.split(" ")[0];
                 executeCommand("boundingbox " + shapeName);
-                // Show bounding box visualization
                 drawingPanel.showBoundingBoxForShape(shapeName);
             }
         });
@@ -338,7 +353,7 @@ public class ClevisGUI {
     
     private void createCommandPanel() {
         JPanel commandPanel = new JPanel(new BorderLayout());
-        commandPanel.setBorder(BorderFactory.createTitledBorder("Command Console"));
+        commandPanel.setBorder(BorderFactory.createTitledBorder("GUI Command Console"));
         
         commandHistory = new JTextArea(10, 60);
         commandHistory.setEditable(false);
@@ -373,19 +388,14 @@ public class ClevisGUI {
     }
     
     private void executeCommand(String command) {
-        // Show the command that was executed
+        // Show command in GUI (but not in terminal to avoid duplication)
         appendToCommandHistory("> " + command + "\n");
         
         try {
-            // Execute the command - all outputs will now be captured
+            // Execute command - output will go to both terminal and GUI via our dual stream
             parser.execute(command);
-            
-            // Force flush any remaining output
-            guiPrintStream.flush();
-            
         } catch (Exception e) {
-            // This will also be captured by our error stream redirection
-            System.err.println("Error executing command: " + e.getMessage());
+            appendToCommandHistory("Error: " + e.getMessage() + "\n");
         }
         
         // Handle bounding box visualization
@@ -397,32 +407,29 @@ public class ClevisGUI {
             }
         }
         
+        // Update GUI components
         drawingPanel.repaint();
         updateShapeList();
-        
-        // UPDATE UNDO/REDO BUTTON STATES AFTER EVERY COMMAND
         updateUndoRedoButtons();
-        
-        // Add a separator for readability
         appendToCommandHistory("----------------------------------------\n");
     }
 
     private void updateUndoRedoButtons() {
-    if (undoBtn != null && redoBtn != null) {
-        String status = parser.getUndoRedoStatus();
-        
-        // Parse the status string to determine button states
-        boolean canUndo = status.contains("Undo: Yes");
-        boolean canRedo = status.contains("Redo: Yes");
-        
-        undoBtn.setEnabled(canUndo);
-        redoBtn.setEnabled(canRedo);
-        
-        // Update tooltips with more information
-        undoBtn.setToolTipText(canUndo ? "Undo the last command" : "Nothing to undo");
-        redoBtn.setToolTipText(canRedo ? "Redo the last undone command" : "Nothing to redo");
+        if (undoBtn != null && redoBtn != null) {
+            String status = parser.getUndoRedoStatus();
+            
+            // Parse the status string to determine button states
+            boolean canUndo = status.contains("Undo: Yes");
+            boolean canRedo = status.contains("Redo: Yes");
+            
+            undoBtn.setEnabled(canUndo);
+            redoBtn.setEnabled(canRedo);
+            
+            // Update tooltips
+            undoBtn.setToolTipText(canUndo ? "Undo the last command" : "Nothing to undo");
+            redoBtn.setToolTipText(canRedo ? "Redo the last undone command" : "Nothing to redo");
+        }
     }
-}
     
     private void updateShapeList() {
         try {

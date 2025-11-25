@@ -78,7 +78,34 @@ public final class Rectangle implements Shape {
 
     @Override
     public boolean coversPoint(final double px, final double py) {
-        return px >= x && px <= x + width && py >= y && py <= y + height;
+        final double tolerance = 0.05;
+        
+        // Calculate minimum distance to the rectangle's outline
+        double minDistance = getDistanceToRectangleOutline(px, py);
+        
+        return minDistance <= tolerance;
+    }
+
+    private double getDistanceToRectangleOutline(double px, double py) {
+        // Check if point is inside the rectangle (excluding interior)
+        boolean insideX = px >= this.x && px <= this.x + this.width;
+        boolean insideY = py >= this.y && py <= this.y + this.height;
+        
+        if (insideX && insideY) {
+            // Point is inside - find distance to nearest edge
+            double distToLeft = px - this.x;
+            double distToRight = (this.x + this.width) - px;
+            double distToTop = py - this.y;
+            double distToBottom = (this.y + this.height) - py;
+            
+            return Math.min(Math.min(distToLeft, distToRight), Math.min(distToTop, distToBottom));
+        }
+        
+        // Point is outside - find distance to nearest point on outline
+        double closestX = Math.max(this.x, Math.min(px, this.x + this.width));
+        double closestY = Math.max(this.y, Math.min(py, this.y + this.height));
+        
+        return Math.sqrt(Math.pow(px - closestX, 2) + Math.pow(py - closestY, 2));
     }
     
     @Override

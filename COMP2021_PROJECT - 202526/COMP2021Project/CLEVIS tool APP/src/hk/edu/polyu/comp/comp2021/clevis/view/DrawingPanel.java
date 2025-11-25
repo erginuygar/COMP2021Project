@@ -221,8 +221,10 @@ public class DrawingPanel extends JPanel {
         double h = bbox[3];
         
         // Draw bounding box with highlighted style
-        g2d.setColor(Color.RED);
-        g2d.setStroke(new BasicStroke(3)); // Thicker line
+        g2d.setColor(Color.GREEN);
+        float[] dashPattern = {5, 5};
+        g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, 
+                                    BasicStroke.JOIN_MITER, 10, dashPattern, 0));// Thicker line
         
         // Draw rectangle
         g2d.drawRect((int)x, (int)y, (int)w, (int)h);

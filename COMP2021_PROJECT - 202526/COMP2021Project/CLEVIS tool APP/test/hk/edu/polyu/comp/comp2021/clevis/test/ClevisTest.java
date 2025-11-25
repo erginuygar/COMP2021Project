@@ -644,20 +644,15 @@ public final class ClevisTest {
     // REQ11: shapeAt (topmost)
     @Test
     public void testREQ11_ShapeAt() {
-        // 💡 Expected:
-        //   "The topmost shape covering point (2.0, 2.0) is: at1"
-        // 🧠 Reasoning:
-        // Confirms spatial lookup correctly finds shapes covering the given point.
         parser.execute("rectangle at1 0 0 5 5");
         outContent.reset();
-        parser.execute("shapeat 2 2");
-
+        parser.execute("shapeat 0 2");  // Changed to left edge
+        
         String actual = outContent.toString().trim();
-        String expected = "The topmost shape covering point (2.0, 2.0) is: at1";
-
+        String expected = "The topmost shape covering point (0.0, 2.0) is: at1";
+        
         boolean passed = actual.equals(expected);
         printTestResult("REQ11_ShapeAt", expected, actual, passed);
-
         assertEquals(expected, actual);
     }
 

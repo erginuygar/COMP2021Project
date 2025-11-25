@@ -1,2 +1,22 @@
-line z 50 100 150 60
-shapeat 75 75
+rectangle one 1 1 20 20
+private void executeUserCommand() {         String command = commandInput.getText().trim();         if (!command.isEmpty()) {             executeCommand(command);             commandInput.setText("");             commandInput.requestFocusInWindow();         }     }
+Error: Unknown command - private
+help
+rectangle three 20 20 100 50
+move three 20 20
+move three 20 0
+move three 0 20
+Synch Now
+Error: Unknown command - synch
+undo
+undo
+undo
+undo
+undo
+circle circ_1764043842569 150 150 50
+undo
+rectangle rect_1764043845418 50 50 100 60
+circle circ_1764043845934 150 150 50
+line line_1764043846452 10 10 200 200
+square sq_1764043846970 100 100 80
+quit

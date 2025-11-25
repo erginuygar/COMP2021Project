@@ -76,9 +76,13 @@ public final class Circle implements Shape {
 
     @Override
     public boolean coversPoint(final double px, final double py) {
-        final double dx = px - x;
-        final double dy = py - y;
-        return (dx * dx + dy * dy) <= radius * radius;
+        final double tolerance = 0.05;
+        
+        // Calculate distance from point to circle center
+        double distanceToCenter = Math.sqrt(Math.pow(px - this.x, 2) + Math.pow(py - this.y, 2));
+        
+        // Check if point is within tolerance of the circle outline
+        return Math.abs(distanceToCenter - this.radius) <= tolerance;
     }
 
     @Override

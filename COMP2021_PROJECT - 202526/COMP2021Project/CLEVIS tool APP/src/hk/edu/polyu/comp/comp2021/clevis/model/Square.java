@@ -75,9 +75,35 @@ public final class Square implements Shape {
 
     @Override
     public boolean coversPoint(final double px, final double py) {
-        return px >= x && px <= x + length && py >= y && py <= y + length;
+        final double tolerance = 0.05;
+        
+        // Calculate minimum distance to the square's outline
+        double minDistance = getDistanceToSquareOutline(px, py);
+        
+        return minDistance <= tolerance;
     }
 
+    private double getDistanceToSquareOutline(double px, double py) {
+        // Check if point is inside the square (excluding interior)
+        boolean insideX = px >= this.x && px <= this.x + this.length;
+        boolean insideY = py >= this.y && py <= this.y + this.length;
+        
+        if (insideX && insideY) {
+            // Point is inside - find distance to nearest edge
+            double distToLeft = px - this.x;
+            double distToRight = (this.x + this.length) - px;
+            double distToTop = py - this.y;
+            double distToBottom = (this.y + this.length) - py;
+            
+            return Math.min(Math.min(distToLeft, distToRight), Math.min(distToTop, distToBottom));
+        }
+        
+        // Point is outside - find distance to nearest point on outline
+        double closestX = Math.max(this.x, Math.min(px, this.x + this.length));
+        double closestY = Math.max(this.y, Math.min(py, this.y + this.length));
+        
+        return Math.sqrt(Math.pow(px - closestX, 2) + Math.pow(py - closestY, 2));
+    }
     @Override
     public void changeName(String newName) {
         if (newName == null || newName.isEmpty()) {

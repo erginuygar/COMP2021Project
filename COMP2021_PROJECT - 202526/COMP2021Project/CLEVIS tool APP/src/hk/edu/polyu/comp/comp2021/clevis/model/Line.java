@@ -85,32 +85,52 @@ public final class Line implements Shape {
     }
     @Override
     public boolean coversPoint(final double px, final double py) {
+        final double tolerance = 0.05;
+        
         // Calculate the distance from point to line segment
-        double lineLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        double distance = distanceToLineSegment(px, py);
         
-        // If line has zero length, check if point equals the single point
-        if (lineLength == 0) {
-            return Math.abs(px - x1) < 1e-6 && Math.abs(py - y1) < 1e-6;
-        }
-        
-        // Calculate where the point projects onto the line
-        double t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / (lineLength * lineLength);
-        
-        // If projection is outside the segment, the point is not on the segment
-        if (t < 0 || t > 1) {
-            return false;
-        }
-        
-        // Find the closest point on the line segment
-        double closestX = x1 + t * (x2 - x1);
-        double closestY = y1 + t * (y2 - y1);
-        
-        // Calculate distance from point to closest point on line
-        double distance = Math.sqrt(Math.pow(px - closestX, 2) + Math.pow(py - closestY, 2));
-        
-        // Return true if distance is within tolerance (e.g., 2 pixels for click detection)
-        return distance <= 0.05;
+        return distance <= tolerance;
     }
+
+    private double distanceToLineSegment(double px, double py) {
+        // Quick bounding box check first
+        double minX = Math.min(x1, x2);
+        double maxX = Math.max(x1, x2);
+        double minY = Math.min(y1, y2);
+        double maxY = Math.max(y1, y2);
+        
+        // If point is outside extended bounding box (including tolerance), it can't be on the line
+        if (px < minX - 0.05 || px > maxX + 0.05 || py < minY - 0.05 || py > maxY + 0.05) {
+            return Double.MAX_VALUE;
+        }
+        
+        // Calculate the squared length of the line segment
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double lineLengthSquared = dx * dx + dy * dy;
+        
+        // If line is essentially a point
+        if (lineLengthSquared < 1e-10) {
+            return Math.sqrt(Math.pow(px - x1, 2) + Math.pow(py - y1, 2));
+        }
+        
+        // Calculate the projection parameter t = [(P-A)·(B-A)] / |B-A|²
+        double t = ((px - x1) * dx + (py - y1) * dy) / lineLengthSquared;
+        
+        if (t < 0) {
+            // Closest to start point A
+            return Math.sqrt(Math.pow(px - x1, 2) + Math.pow(py - y1, 2));
+        } else if (t > 1) {
+            // Closest to end point B  
+            return Math.sqrt(Math.pow(px - x2, 2) + Math.pow(py - y2, 2));
+        } else {
+            // Closest point is between A and B - calculate perpendicular distance
+            double closestX = x1 + t * dx;
+            double closestY = y1 + t * dy;
+            return Math.sqrt(Math.pow(px - closestX, 2) + Math.pow(py - closestY, 2));
+        }
+}
 
     @Override
     public void changeName(String newName) {
