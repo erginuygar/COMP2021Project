@@ -1,0 +1,18 @@
+rectangle one 50 50 100 80
+rectangle two 1 1 20 20
+undo
+undo
+rectangle one 1 1 20 20
+rectangle two 20 20 50 50
+undo
+redo
+group z one two
+move z 50 50
+ungroup z
+rectangle rect_1764046545391 50 50 100 60
+circle circ_1764046545871 150 150 50
+line line_1764046546506 10 10 200 200
+undo
+undo
+undo
+boundingbox one
