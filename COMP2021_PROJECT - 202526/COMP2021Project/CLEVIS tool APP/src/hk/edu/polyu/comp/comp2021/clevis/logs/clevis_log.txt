@@ -1,0 +1,10 @@
+rectangle wall1 50 100 40 80
+rectangle wall2 110 100 40 80
+rectangle door 80 140 20 40
+move door 10 0
+line roof 50 100 150 100
+line roof_left 50 100 100 60
+line roof_right 100 60 150 100
+group house wall1 wall2 door roof roof_left roof_right
+undo
+group house wall1 wall2 door roof roof_left roof_right
